@@ -1,0 +1,27 @@
+language: go
+os:
+  - linux
+  - osx
+
+
+matrix:
+  fast_finish: true
+  include:
+    - go: 1.12.x
+      env: CGO_ENABLED=0 GO111MODULE=on
+\
+
+git:
+  depth: 1
+
+
+before_install:
+  - go build
+script:
+  - ./felix sshw
+
+notifications:
+  email:
+    recipients:
+      - neochau@gmail.com
+    on_success: never

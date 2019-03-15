@@ -1,0 +1,14 @@
+felix
+.idea
+builds
+builds/*
+test*
+_build*
+*.exe
+release
+dist
+_book
+_release
+.vscode
+_nes
+dist/
