@@ -56,7 +56,7 @@ func (m *User) Update() (err error) {
 func (m *User) Create() (err error) {
 	m.Id = 0
 	m.makePassword()
-
+	m.RoleId = 4
 	return db.Create(m).Error
 }
 
