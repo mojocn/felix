@@ -26,6 +26,7 @@ func init() {
 }
 
 func CreateSQLiteDb(verbose bool) {
+	log.Println("SQLite3 in:", dbPath)
 	sqlite, err := gorm.Open("sqlite3", dbPath)
 	if err != nil {
 		logrus.WithError(err).Fatalf("master fail to open its sqlite db in %s. please install master first.", dbPath)
@@ -35,7 +36,7 @@ func CreateSQLiteDb(verbose bool) {
 	db = sqlite
 	//TODO::optimize
 	//db.DropTable("term_logs")
-	db.AutoMigrate(Config{}, Machine{}, Task{}, User{}, Ginbro{}, SshLog{}, WslogHook{}, WslogMsg{}, Comment{}, HackNew{})
+	db.AutoMigrate(Machine{}, Task{}, User{}, Ginbro{}, SshLog{}, WslogHook{}, WslogMsg{}, Comment{}, HackNew{})
 	db.LogMode(verbose)
 }
 
