@@ -1,13 +1,8 @@
 package cmd
 
 import (
-	"os/exec"
-
 	"github.com/dejavuzhou/felix/cronjob"
-	"github.com/dejavuzhou/felix/spiderhn"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // cronCmd represents the cron command
@@ -27,23 +22,6 @@ func init() {
 }
 
 func spiderHacknews() {
-	if err := spiderhn.SpiderHackNews(); err != nil {
-		logrus.Error(err)
-	}
-	if err := spiderhn.SpiderHackShows(); err != nil {
-		logrus.Error(err)
-	}
-	if err := spiderhn.ParsemarkdownHacknews(); err != nil {
-		logrus.Error(err)
-	}
-
-	jekyllCmd := exec.Command("bundle", "exec", "jekyll", "build")
-	proDir := viper.GetString("tech_mojotv_cn.srcDir")
-	jekyllCmd.Dir = proDir
-	b, err := jekyllCmd.Output()
-	logrus.Info(string(b))
-	if err != nil {
-		logrus.Error(err)
-	}
-
+	techMojoSpiderHN()
+	techMojoJekyllRun("build")
 }
