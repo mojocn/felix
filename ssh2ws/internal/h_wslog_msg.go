@@ -12,6 +12,7 @@ func WslogMsgDelete(c *gin.Context) {
 	if handleError(c, err) {
 		return
 	}
+
 	mdl.Id = id
 	err = mdl.Delete()
 	if handleError(c, err) {

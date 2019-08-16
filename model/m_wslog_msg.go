@@ -24,7 +24,8 @@ func (m *WslogMsg) Update() error {
 
 func (m WslogMsg) All(q *PaginationQ) (list *[]WslogMsg, total uint, err error) {
 	list = &[]WslogMsg{}
-	total, err = crudAll(q, db.Model(m), list)
+	tx := db.Model(m).Order("id DESC")
+	total, err = crudAll(q, tx, list)
 	return
 }
 func (m WslogMsg) Delete() (err error) {
@@ -32,4 +33,8 @@ func (m WslogMsg) Delete() (err error) {
 		return errors.New("resource must not be zero value")
 	}
 	return crudDelete(m)
+}
+
+func (m WslogMsg) Truncate() (err error) {
+	return db.Exec("TRUNCATE TABLE wslog_msgs").Error
 }

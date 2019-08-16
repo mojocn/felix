@@ -29,7 +29,7 @@
     youdaoAppSecret="xx" # youdao tranlate app secret
     
 [felix]
-    slack="https://felix.mojotv.cn/api/wslog/hook-api?_t=kiz9Wf-O6_lbY2pz2lGEeA" 
+    slack="https://home.mojotv.cn/api/wslog/hook-api?_t=kiz9Wf-O6_lbY2pz2lGEeA" 
 [sshw]
     addr=":2222"
     user="xxx" # init user
@@ -42,6 +42,48 @@
     srcDir="D:\\code\\libragen.cn" # my jekyll blog about libragen
 ```
 
+## Demo Nginx Config file 
+```ini
+server {
+        server_name home.mojotv.cn;
+        charset utf-8;
+
+        location /ws/
+        {
+                 proxy_pass http://127.0.0.1:2222;
+                 proxy_http_version 1.1;
+                 proxy_set_header Upgrade $http_upgrade;
+                 proxy_set_header Connection "Upgrade";
+                proxy_set_header X-Real-IP $remote_addr;
+         }
+        location / {
+           proxy_set_header X-Forwarded-For $remote_addr;
+           proxy_set_header Host $http_host;
+           proxy_pass http://127.0.0.1:2222;
+        }
+        access_log  /data/wwwlogs/home.mojotv.cn.log;
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/captcha.mojotv.cn/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/captcha.mojotv.cn/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+}
+server {
+    if ($host = home.mojotv.cn) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+        listen 80;
+        server_name home.mojotv.cn;
+    return 404; # managed by Certbot
+
+
+}
+        
+```
 
 ## Overview
 commands:

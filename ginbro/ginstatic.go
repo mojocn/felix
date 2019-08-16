@@ -81,7 +81,7 @@ func NewGinStaticBinMiddleware(urlPrefix string) (gin.HandlerFunc, error) {
 // It unzips all files and stores them in an in-memory map.
 func create(rawZipString string) (http.FileSystem, error) {
 	if zipData == "" {
-		return nil, errors.New("statik/fs: no zip data registered")
+		return nil, errors.New("no zip data registered")
 	}
 	zipReader, err := zip.NewReader(strings.NewReader(zipData), int64(len(zipData)))
 	if err != nil {
@@ -95,7 +95,7 @@ func create(rawZipString string) (http.FileSystem, error) {
 		f := file{FileInfo: fi, fs: fs}
 		f.data, err = unzip(zipFile)
 		if err != nil {
-			return nil, fmt.Errorf("statik/fs: error unzipping file %q: %s", zipFile.Name, err)
+			return nil, fmt.Errorf("error unzipping file %q: %s", zipFile.Name, err)
 		}
 		files["/"+zipFile.Name] = f
 	}
@@ -310,7 +310,7 @@ func rename(src, dest string, flagForce bool) error {
 // Walks on the source path and generates source code
 // that contains source directory's contents as zip contents.
 // Generates source registers generated zip contents data to
-// be read by the statik/fs HTTP file system.
+// be read by the HTTP file system.
 func generateSource(srcPath, flagTags, flagPkgCmt, flagPkg string, flagNoMtime, flagNoCompress bool) (file *os.File, err error) {
 	var (
 		buffer    bytes.Buffer
