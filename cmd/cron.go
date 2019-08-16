@@ -12,7 +12,7 @@ var cronCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		s := cronjob.NewScheduler()
-		s.Every(3).Hours().Do(spiderHacknews)
+		s.Every(1).Hours().Do(spiderHacknews)
 		<-s.Start()
 	},
 }
