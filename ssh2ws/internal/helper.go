@@ -31,7 +31,10 @@ func jsonSuccess(c *gin.Context) {
 	c.AbortWithStatusJSON(200, gin.H{"ok": true, "msg": "success"})
 }
 func jsonPagination(c *gin.Context, list interface{}, total uint, query *model.PaginationQ) {
-	c.JSON(200, gin.H{"ok": true, "data": list, "total": total, "page": query.Page, "size": query.Size})
+	c.AbortWithStatusJSON(200, gin.H{"ok": true, "data": list, "total": total, "page": query.Page, "size": query.Size})
+}
+func json200(c *gin.Context, data interface{}) {
+	c.AbortWithStatusJSON(200, data)
 }
 func handleError(c *gin.Context, err error) bool {
 	if err != nil {

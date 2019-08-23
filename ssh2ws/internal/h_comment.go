@@ -7,24 +7,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type commentQ struct {
-	model.PaginationQ
-	model.Comment
-}
-
 func CommentAll(c *gin.Context) {
-	q := &commentQ{}
+	q := &model.CommentQ{}
 	err := c.ShouldBindQuery(q)
 	if handleError(c, err) {
 		return
 	}
-	mdl := q.Comment
-	query := &q.PaginationQ
-	list, total, err := mdl.All(query)
+	data, err := q.SearchAll()
 	if handleError(c, err) {
 		return
 	}
-	jsonPagination(c, list, total, query)
+	json200(c, data)
 }
 
 func CommentCreate(c *gin.Context) {

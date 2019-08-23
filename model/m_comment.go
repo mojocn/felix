@@ -5,6 +5,25 @@ import (
 	"fmt"
 )
 
+type CommentQ struct {
+	PaginationQ
+	Comment
+}
+
+func (cq *CommentQ) SearchAll() (data *PaginationQ, err error) {
+	page := cq.PaginationQ
+	page.Data = &[]Comment{} //make sure page.Data is not nil and is a slice gorm.Model
+
+	m := cq.Comment
+	tx := db.Model(cq.Comment).Preload("User")
+	//customize search column
+	if m.PageUrl != "" {
+		tx = tx.Where("`page_url` = ?", m.PageUrl)
+	}
+
+	return page.SearchAll(tx)
+}
+
 type Comment struct {
 	BaseModel
 	PageUrl     string        `json:"page_url" gorm:"index" form:"page_url"`
@@ -25,14 +44,6 @@ func (m *Comment) AfterFind() (err error) {
 //One
 func (m *Comment) One() error {
 	return crudOne(m)
-}
-
-//All
-func (m *Comment) All(q *PaginationQ) (list *[]Comment, total uint, err error) {
-	list = &[]Comment{}
-	tx := db.Model(m).Order("CreatedAt").Where("page_url = ?", m.PageUrl).Preload("User")
-	total, err = crudAll(q, tx, list)
-	return
 }
 
 func (m *Comment) Action(id, uid uint, action string) (err error) {
