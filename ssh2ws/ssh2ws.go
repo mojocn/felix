@@ -77,7 +77,7 @@ func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration,
 		api.GET("comment", internal.CommentAll)
 		api.GET("comment/:id/:action", mwJwt, internal.CommentAction)
 		api.POST("comment", mwJwt, internal.CommentCreate)
-		api.DELETE("comment", mwJwt, internal.CommentDelete)
+		api.DELETE("comment/:id", mwJwt, internal.CommentDelete)
 	}
 
 	authG := api.Use(mwJwt)
