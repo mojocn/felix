@@ -14,12 +14,46 @@ import (
 	"github.com/spf13/viper"
 )
 
+type HackNewQ struct {
+	PaginationQ
+	HackNew
+}
+
+func (cq *HackNewQ) SearchAll() (data *PaginationQ, err error) {
+	page := cq.PaginationQ
+	page.Data = &[]Comment{} //make sure page.Data is not nil and is a slice gorm.Model
+
+	m := cq.HackNew
+	tx := db.Model(cq.HackNew).Preload("User")
+	//customize search column
+	if m.TitleEn != "" {
+		tx = tx.Where("`title_en` = ?", m.TitleEn)
+	}
+	if m.TitleZh != "" {
+		tx = tx.Where("`title_zh` = ?", m.TitleZh)
+	}
+	return page.SearchAll(tx)
+}
+
 type HackNew struct {
 	BaseModel
-	TitleZh string `json:"title_zh"`
-	TitleEn string `json:"title_en"`
-	Url     string `gorm:"index" json:"url"`
-	Cate    string `json:"cate" comment:"news or show"`
+	TitleZh string `json:"title_zh" form:"title_zh"`
+	TitleEn string `json:"title_en" form:"title_en"`
+	Url     string `gorm:"index" json:"url" form:"url"`
+	Cate    string `json:"cate" comment:"news or show" form:"cate"`
+}
+
+//Delete
+func (m HackNew) Delete(ids []uint) (err error) {
+	if len(ids) > 0 {
+		err = db.Where("`id` in (?)", ids).Delete(m).Error
+	}
+	return
+}
+
+//Update a row
+func (m *HackNew) Update() (err error) {
+	return db.Model(m).Update(m).Error
 }
 
 func (m *HackNew) translateEn2ch() (err error) {

@@ -79,6 +79,11 @@ func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration,
 		api.POST("comment", mwJwt, internal.CommentCreate)
 		api.DELETE("comment/:id", mwJwt, internal.CommentDelete)
 	}
+	{
+		api.GET("hacknews", internal.HackNewAll)
+		api.PATCH("hacknews", internal.HackNewUpdate)
+		api.POST("hacknews-rm", internal.HackNewRm)
+	}
 
 	authG := api.Use(mwJwt)
 	{

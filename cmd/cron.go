@@ -12,16 +12,11 @@ var cronCmd = &cobra.Command{
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		s := cronjob.NewScheduler()
-		s.Every(1).Hours().Do(spiderHacknews)
+		s.Every(1).Hours().Do(techMojoSpiderHN)
 		<-s.Start()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(cronCmd)
-}
-
-func spiderHacknews() {
-	techMojoSpiderHN()
-	techMojoJekyllRun("build")
 }
