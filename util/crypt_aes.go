@@ -33,18 +33,18 @@ func AesEncrypt(origData []byte, key string) (string, error) {
 
 }
 
-func AesDecrypt(cryted string, key string) (string, error) {
+func AesDecrypt(cryted string, key string) ([]byte, error) {
 	// 转成字节数组
 	crytedByte, err := base64.RawURLEncoding.DecodeString(cryted)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	k := []byte(key)
 
 	// 分组秘钥
 	block, err := aes.NewCipher(k)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	// 获取秘钥块的长度
 	blockSize := block.BlockSize()
@@ -56,7 +56,7 @@ func AesDecrypt(cryted string, key string) (string, error) {
 	blockMode.CryptBlocks(orig, crytedByte)
 	// 去补全码
 	orig = PKCS7UnPadding(orig)
-	return string(orig), nil
+	return orig, nil
 }
 
 //补码

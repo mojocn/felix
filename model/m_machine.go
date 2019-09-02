@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+//Machine
 type Machine struct {
 	BaseModel
 	Name     string `json:"name" gorm:"type:varchar(50);unique_index"`
@@ -18,6 +19,7 @@ type Machine struct {
 	Type     string `json:"type" gorm:"type:varchar(20)"`
 }
 
+//MachineAdd
 func MachineAdd(name, addr, ip, user, password, key, auth string, port uint) error {
 	ins := &Machine{Name: name, Ip: ip, Host: addr, User: user, Password: password, Key: key, Type: auth, Port: port}
 	return db.Create(ins).Error

@@ -21,10 +21,10 @@ type HackNewQ struct {
 
 func (cq *HackNewQ) SearchAll() (data *PaginationQ, err error) {
 	page := cq.PaginationQ
-	page.Data = &[]Comment{} //make sure page.Data is not nil and is a slice gorm.Model
+	page.Data = &[]HackNew{} //make sure page.Data is not nil and is a slice gorm.Model
 
 	m := cq.HackNew
-	tx := db.Model(cq.HackNew).Preload("User")
+	tx := db.Model(cq.HackNew).Order("updated_at desc")
 	//customize search column
 	if m.TitleEn != "" {
 		tx = tx.Where("`title_en` = ?", m.TitleEn)

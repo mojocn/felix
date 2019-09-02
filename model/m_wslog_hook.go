@@ -81,7 +81,7 @@ func WslogHookCheckToken(token string) (*WslogHook, error) {
 	if err != nil {
 		return nil, err
 	}
-	hookID, err := strconv.ParseUint(msg, 10, 64)
+	hookID, err := strconv.ParseUint(string(msg), 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("%s's is not a int of decryption", token)
 	}

@@ -32,7 +32,9 @@ var nesScanCmd = &cobra.Command{
 					thisDir := filepath.Dir(path)
 					fileName := strings.Replace(info.Name(), " ", "_", -1)
 					fileName = strings.Replace(fileName, "!", "x", -1)
+					fileName = strings.Replace(fileName, ",", "_", -1)
 					fileName = strings.Replace(fileName, "&", "and", -1)
+					fileName = strings.Replace(fileName, "._", "_", -1)
 					fileName = strings.Replace(fileName, "-", "_", -1)
 					fileName = strings.Replace(fileName, "(", "_", -1)
 					fileName = strings.Replace(fileName, ")", "_", -1)
@@ -40,6 +42,7 @@ var nesScanCmd = &cobra.Command{
 					fileName = strings.Replace(fileName, "]", "_", -1)
 					fileName = strings.Replace(fileName, "___", "_", -1)
 					fileName = strings.Replace(fileName, "__", "_", -1)
+					fileName = strings.Replace(fileName, "_.", ".", -1)
 
 					nPath := filepath.Join(thisDir, fileName)
 					err := os.Rename(path, nPath)
