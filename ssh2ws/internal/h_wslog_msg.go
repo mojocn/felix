@@ -7,18 +7,18 @@ import (
 
 func WslogMsgDelete(c *gin.Context) {
 
-	var mdl model.WslogMsg
-	id, err := parseParamID(c)
+	ids := []int{}
+	err := c.ShouldBind(&ids)
 	if handleError(c, err) {
 		return
 	}
-
-	mdl.Id = id
-	err = mdl.Delete()
+	var mdl model.WslogMsg
+	err = mdl.Delete(ids)
 	if handleError(c, err) {
 		return
 	}
 	jsonSuccess(c)
+
 }
 
 func WslogMsgAll(c *gin.Context) {

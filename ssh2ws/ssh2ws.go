@@ -69,7 +69,7 @@ func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration,
 		api.DELETE("wslog/hook/:id", mwJwt, internal.WslogHookDelete)
 
 		api.GET("wslog/msg", mwJwt, internal.WslogMsgAll)
-		api.DELETE("wslog/msg/:id", mwJwt, internal.WslogMsgDelete)
+		api.POST("wslog/msg-rm", mwJwt, internal.WslogMsgDelete)
 	}
 
 	//评论

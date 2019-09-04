@@ -38,11 +38,11 @@ func WsSsh(c *gin.Context) {
 	if handleError(c, err) {
 		return
 	}
-	cols, err := strconv.Atoi(c.DefaultQuery("cols", "120"))
+	cols, err := strconv.Atoi(c.DefaultQuery("cols", "80"))
 	if wshandleError(wsConn, err) {
 		return
 	}
-	rows, err := strconv.Atoi(c.DefaultQuery("rows", "32"))
+	rows, err := strconv.Atoi(c.DefaultQuery("rows", "40"))
 	if wshandleError(wsConn, err) {
 		return
 	}

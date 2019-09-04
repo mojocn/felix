@@ -1,9 +1,5 @@
 package model
 
-import (
-	"errors"
-)
-
 type WslogMsg struct {
 	BaseModel
 	HookId   uint     `gorm:"index" json:"hook_id"`
@@ -28,12 +24,12 @@ func (m WslogMsg) All(q *PaginationQ) (list *[]WslogMsg, total uint, err error) 
 	total, err = crudAll(q, tx, list)
 	return
 }
-func (m WslogMsg) Delete() (err error) {
-	if m.Id == 0 {
-		return errors.New("resource must not be zero value")
-	}
-	return crudDelete(m)
+func (m WslogMsg) Delete(ids []int) (err error) {
+	return db.Unscoped().Where("id in (?)", ids).Delete(m).Error
+
 }
+
+
 
 func (m WslogMsg) Truncate() (err error) {
 	return db.Exec("TRUNCATE TABLE wslog_msgs").Error

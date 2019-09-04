@@ -2,7 +2,6 @@ package fssh
 
 import (
 	"fmt"
-	"github.com/dejavuzhou/felix/model"
 	"github.com/dejavuzhou/felix/util"
 	"github.com/gliderlabs/ssh"
 	"github.com/sirupsen/logrus"
@@ -30,6 +29,7 @@ func Run() {
 		Addr:            ":88",
 		Handler:         helloHandler,
 		PasswordHandler: passwordH,
+
 	}
 	s.AddHostKey(hostKeySigner)
 	log.Fatal(s.ListenAndServe())
@@ -38,7 +38,7 @@ func Run() {
 
 func passwordH(ctx ssh.Context, password string) bool {
 	user := ctx.User()
-	return model.FsshUserAuth(user, password)
+	return user == "felix"
 }
 
 func helloHandler(s ssh.Session) {
@@ -49,7 +49,7 @@ func helloHandler(s ssh.Session) {
 		io.WriteString(s, "不是PTY请求.\n")
 		s.Exit(1)
 	}
-	sshConf, err := util.NewSshClientConfig("pi", "ZHou1987", "password", "", "")
+	sshConf, err := util.NewSshClientConfig("pi", "", "password", "", "")
 	if err != nil {
 		io.WriteString(s, err.Error())
 		return
