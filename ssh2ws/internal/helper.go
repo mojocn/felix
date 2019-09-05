@@ -74,28 +74,26 @@ func parseParamID(c *gin.Context) (uint, error) {
 }
 
 func getAuthUser(c *gin.Context) (*model.User, error) {
-	user := model.User{}
-	uid, err := mWuserId(c)
-	if err != nil {
-		return nil, err
+	v, exist := c.Get(contextKeyUserObj)
+	if !exist {
+		return nil, errors.New(contextKeyUserObj + " not exist")
 	}
-	user.Id = uid
-	err = user.One()
-	if err != nil {
-		return nil, fmt.Errorf("context can not get user of %d,error:%s", user.Id, err)
+	user, ok := v.(model.User)
+	if !ok {
+		return nil, fmt.Errorf("v:%v is not type of model.User", user)
 	}
 	return &user, nil
 }
 func mWuserId(c *gin.Context) (uint, error) {
-	v,exist := c.Get(contextKeyUserObj)
+	v, exist := c.Get(contextKeyUserObj)
 	if !exist {
-		return 0,errors.New(contextKeyUserObj + " not exist")
+		return 0, errors.New(contextKeyUserObj + " not exist")
 	}
 	user, ok := v.(model.User)
 	if ok {
 		return user.Id, nil
 	}
-	return 0,errors.New("can't convert to user struct")
+	return 0, errors.New("can't convert to user struct")
 }
 func mWhookApiHookId(c *gin.Context) (uint, error) {
 	return mWcontextGetUintKey(c, contextKeyWslogHookId)
@@ -104,7 +102,7 @@ func mWhookApiHookId(c *gin.Context) (uint, error) {
 func mWcontextGetUintKey(c *gin.Context, key string) (uint, error) {
 	v, exist := c.Get(key)
 	if !exist {
-		return 0,errors.New(key + " not exist")
+		return 0, errors.New(key + " not exist")
 	}
 	uintV, ok := v.(uint)
 	if ok {
