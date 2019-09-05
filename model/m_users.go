@@ -82,14 +82,14 @@ func (m *User) Login(ip string, roleId uint) (string, error) {
 		return "", err
 	}
 	if (m.RoleId & roleId) != roleId {
-		return "", fmt.Errorf("not role of %d",roleId)
+		return "", fmt.Errorf("not role of %d", roleId)
 	}
 	//password is set to bcrypt check
 	if err := bcrypt.CompareHashAndPassword([]byte(m.HashedPassword), []byte(inputPassword)); err != nil {
 		return "", err
 	}
 	m.Password = ""
-	data, err := jwtGenerateToken(m)
+	data, err := jwtGenerateToken(m, time.Hour*24*365)
 	return data, err
 }
 

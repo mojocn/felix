@@ -19,9 +19,11 @@ type userStdClaims struct {
 }
 
 func (c userStdClaims) Valid() (err error) {
-	err = c.StandardClaims.Valid()
-	if err != nil {
-		return err
+	if c.VerifyExpiresAt(time.Now().Unix(), true) == false {
+		return  errors.New("token is expired")
+	}
+	if !c.VerifyIssuer(AppIss, true) {
+		return  errors.New("token's issuer is wrong")
 	}
 	if c.User.Id < 1 {
 		return errors.New("invalid user in jwt")
@@ -29,10 +31,9 @@ func (c userStdClaims) Valid() (err error) {
 	return
 }
 
-func jwtGenerateToken(m *User) (string, error) {
+func jwtGenerateToken(m *User,d time.Duration) (string, error) {
 	m.Password = ""
-	expireAfterTime := time.Hour * 24
-	expireTime := time.Now().Add(expireAfterTime)
+	expireTime := time.Now().Add(d)
 	stdClaims := jwt.StandardClaims{
 		ExpiresAt: expireTime.Unix(),
 		IssuedAt:  time.Now().Unix(),
@@ -69,12 +70,6 @@ func JwtParseUser(tokenString string) (*User, error) {
 	})
 	if err != nil {
 		return nil, err
-	}
-	if claims.VerifyExpiresAt(time.Now().Unix(), true) == false {
-		return nil, errors.New("token is expired")
-	}
-	if !claims.VerifyIssuer(AppIss, true) {
-		return nil, errors.New("token's issuer is wrong")
 	}
 	return claims.User, err
 }
