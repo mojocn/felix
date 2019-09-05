@@ -76,7 +76,7 @@ func publicKeyAuthFunc(kPath string) ssh.AuthMethod {
 	if err != nil {
 		log.Fatal("ssh key file read failed", err)
 	}
-	// Create the Signer for this private key.
+	// CreateUserOfRole the Signer for this private key.
 	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
 		log.Fatal("ssh key signer failed", err)

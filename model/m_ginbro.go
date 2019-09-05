@@ -17,7 +17,7 @@ type Ginbro struct {
 	DbType     string `json:"db_type" form:"db_type"`
 }
 
-//Create
+//CreateUserOfRole
 func (m *Ginbro) Create() (err error) {
 	m.Id = 0
 	return db.Create(m).Error

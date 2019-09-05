@@ -8,10 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const contextKeyUid = "authedUserId"
+const contextKeyUserObj = "authedUserObj"
 const bearerLength = len("Bearer ")
 
-func JwtMiddleware(c *gin.Context) {
+func ctxTokenToUser(c *gin.Context, roleId uint) {
 	token, ok := c.GetQuery("_t")
 	if !ok {
 		hToken := c.GetHeader("Authorization")
@@ -21,18 +21,26 @@ func JwtMiddleware(c *gin.Context) {
 		}
 		token = strings.TrimSpace(hToken[bearerLength:])
 	}
-	if token == "felix" {
-		c.Set(contextKeyUid, uint(1))
-		c.Next()
-		return
-	}
-	userId, err := model.JwtParseUser(token)
+	usr, err := model.JwtParseUser(token)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusPreconditionFailed, gin.H{"msg": err.Error()})
 		return
 	}
+	if (usr.RoleId & roleId) != roleId {
+		c.AbortWithStatusJSON(http.StatusPreconditionFailed, gin.H{"msg": "roleId 没有权限"})
+		return
+	}
+
 	//store the user Model in the context
-	c.Set(contextKeyUid, userId)
+	c.Set(contextKeyUserObj, *usr)
 	c.Next()
 	// after request
+}
+
+func MwUserAdmin(c *gin.Context) {
+	ctxTokenToUser(c, 2)
+}
+
+func MwUserComment(c *gin.Context) {
+	ctxTokenToUser(c, 8)
 }

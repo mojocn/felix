@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -18,7 +19,7 @@ type User struct {
 	Email          string        `gorm:"column:email" form:"email" json:"email" comment:"邮箱" columnType:"varchar(255)" dataType:"varchar" columnKey:"UNI"`
 	Mobile         string        `gorm:"column:mobile" form:"mobile" json:"mobile" comment:"手机号码" columnType:"varchar(11)" dataType:"varchar" columnKey:"UNI"`
 	Password       string        `gorm:"column:password" form:"password" json:"password,omitempty" comment:"密码" columnType:"varchar(255)" dataType:"varchar" columnKey:""`
-	RoleId         uint          `gorm:"column:role_id" form:"role_id" json:"role_id" comment:"角色ID:2-超级用户,4-普通用户" columnType:"int(10) unsigned" dataType:"int" columnKey:""`
+	RoleId         uint          `gorm:"column:role_id" form:"role_id" json:"role_id" comment:"角色ID:2-超级用户,4-普通用户8-评论用户" columnType:"int(10) unsigned" dataType:"int" columnKey:""`
 	Status         uint          `gorm:"column:status" form:"status" json:"status" comment:"状态: 1-正常,2-禁用/删除" columnType:"int(10) unsigned" dataType:"int" columnKey:""`
 	Avatar         string        `gorm:"column:avatar" form:"avatar" json:"avatar" comment:"用户头像" columnType:"varchar(255)" dataType:"varchar" columnKey:""`
 	Remark         string        `gorm:"column:remark" form:"remark" json:"remark" comment:"备注" columnType:"varchar(255)" dataType:"varchar" columnKey:""`
@@ -52,11 +53,11 @@ func (m *User) Update() (err error) {
 	return db.Model(m).Update(m).Error
 }
 
-//Create
-func (m *User) Create() (err error) {
+//CreateUserOfRole
+func (m *User) CreateUserOfRole(role uint) (err error) {
 	m.Id = 0
 	m.makePassword()
-	m.RoleId = 4
+	m.RoleId = role //评论用户
 	return db.Create(m).Error
 }
 
@@ -69,20 +70,23 @@ func (m *User) Delete() (err error) {
 }
 
 //Login
-func (m *User) Login(ip string) (*jwtObj, error) {
+func (m *User) Login(ip string, roleId uint) (string, error) {
 	m.Id = 0
 	if m.Password == "" {
-		return nil, errors.New("password is required")
+		return "", errors.New("password is required")
 	}
 	inputPassword := m.Password
 
 	err := db.Where("username = ? or email = ?", m.Username, m.Username).First(&m).Error
 	if err != nil {
-		return nil, err
+		return "", err
+	}
+	if (m.RoleId & roleId) != roleId {
+		return "", fmt.Errorf("not role of %d",roleId)
 	}
 	//password is set to bcrypt check
 	if err := bcrypt.CompareHashAndPassword([]byte(m.HashedPassword), []byte(inputPassword)); err != nil {
-		return nil, err
+		return "", err
 	}
 	m.Password = ""
 	data, err := jwtGenerateToken(m)

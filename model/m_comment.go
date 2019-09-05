@@ -70,7 +70,7 @@ func (m *Comment) Action(id, uid uint, action string) (err error) {
 	return db.Model(m).Update(m).Error
 }
 
-//Create
+//CreateUserOfRole
 func (m *Comment) Create() (err error) {
 	m.Id = 0
 	m.LikeUids = nil

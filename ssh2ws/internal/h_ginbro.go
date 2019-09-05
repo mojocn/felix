@@ -73,7 +73,7 @@ func GinbroDownload(c *gin.Context) {
 
 	buf := new(bytes.Buffer)
 
-	// Create a new zip archive.
+	// CreateUserOfRole a new zip archive.
 	w := zip.NewWriter(buf)
 
 	err := filepath.Walk(srcPath, func(path string, fi os.FileInfo, err error) error {

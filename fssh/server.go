@@ -16,7 +16,7 @@ import (
 
 var hostKeySigner gossh.Signer
 
-func init() {
+func LoadOrCreateKey() {
 	s, err := createOrLoadKeySigner()
 	if err != nil {
 		log.Fatal(err)
@@ -60,7 +60,7 @@ func helloHandler(s ssh.Session) {
 		log.Fatal("unable to connect: ", err)
 	}
 	defer conn.Close()
-	// Create a fss
+	// CreateUserOfRole a fss
 	fss, err := conn.NewSession()
 	if err != nil {
 		log.Fatal("unable to create fss: ", err)

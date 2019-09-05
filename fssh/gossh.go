@@ -28,7 +28,6 @@ func ThisRun()  {
 			return perm, nil
 		},
 		KeyboardInteractiveCallback: func(conn ssh.ConnMetadata, challenge ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
-
 			return nil, nil
 		},
 		BannerCallback: func(conn ssh.ConnMetadata) string {

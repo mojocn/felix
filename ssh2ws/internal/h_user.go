@@ -19,13 +19,13 @@ func UserAll(c *gin.Context) {
 	jsonPagination(c, list, total, query)
 }
 
-func UserCreate(c *gin.Context) {
+func RegisterCommenter(c *gin.Context) {
 	var mdl model.User
 	err := c.ShouldBind(&mdl)
 	if handleError(c, err) {
 		return
 	}
-	err = mdl.Create()
+	err = mdl.CreateUserOfRole(8)
 	if handleError(c, err) {
 		return
 	}

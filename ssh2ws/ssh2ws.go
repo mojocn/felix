@@ -44,11 +44,14 @@ func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration,
 	})
 	r.Use(binStaticMiddleware, mwCORS)
 
-	mwJwt := internal.JwtMiddleware
+
+	{
+		r.POST("comment-login", internal.LoginCommenter)       //评论用户登陆
+		r.POST("comment-register", internal.RegisterCommenter) //评论用户注册
+	}
 
 	api := r.Group("api")
-	api.POST("login", internal.Login)
-	api.POST("register", internal.UserCreate)
+	api.POST("admin-login", internal.LoginAdmin) //管理后台登陆
 	api.GET("meta", internal.Meta)
 
 	//terminal log
@@ -57,35 +60,35 @@ func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration,
 
 	{
 		//websocket
-		r.GET("ws/hook", mwJwt, internal.Wslog(hub))
-		r.GET("ws/ssh/:id", mwJwt, internal.WsSsh)
+		r.GET("ws/hook", internal.MwUserAdmin, internal.Wslog(hub))
+		r.GET("ws/ssh/:id", internal.MwUserAdmin, internal.WsSsh)
 	}
 	//给外部调用
 	{
 		api.POST("wslog/hook-api", internal.JwtMiddlewareWslog, internal.WsLogHookApi(hub))
-		api.GET("wslog/hook", mwJwt, internal.WslogHookAll)
-		api.POST("wslog/hook", mwJwt, internal.WslogHookCreate)
-		api.PATCH("wslog/hook", mwJwt, internal.WslogHookUpdate)
-		api.DELETE("wslog/hook/:id", mwJwt, internal.WslogHookDelete)
+		api.GET("wslog/hook", internal.MwUserAdmin, internal.WslogHookAll)
+		api.POST("wslog/hook", internal.MwUserAdmin, internal.WslogHookCreate)
+		api.PATCH("wslog/hook", internal.MwUserAdmin, internal.WslogHookUpdate)
+		api.DELETE("wslog/hook/:id", internal.MwUserAdmin, internal.WslogHookDelete)
 
-		api.GET("wslog/msg", mwJwt, internal.WslogMsgAll)
-		api.POST("wslog/msg-rm", mwJwt, internal.WslogMsgDelete)
+		api.GET("wslog/msg", internal.MwUserAdmin, internal.WslogMsgAll)
+		api.POST("wslog/msg-rm", internal.MwUserAdmin, internal.WslogMsgDelete)
 	}
 
 	//评论
 	{
 		api.GET("comment", internal.CommentAll)
-		api.GET("comment/:id/:action", mwJwt, internal.CommentAction)
-		api.POST("comment", mwJwt, internal.CommentCreate)
-		api.DELETE("comment/:id", mwJwt, internal.CommentDelete)
+		api.GET("comment/:id/:action", internal.MwUserComment, internal.CommentAction)
+		api.POST("comment", internal.MwUserComment, internal.CommentCreate)
+		api.DELETE("comment/:id", internal.MwUserAdmin, internal.CommentDelete)
 	}
 	{
-		api.GET("hacknews", internal.HackNewAll)
+		api.GET("hacknews",internal.MwUserAdmin, internal.HackNewAll)
 		api.PATCH("hacknews", internal.HackNewUpdate)
 		api.POST("hacknews-rm", internal.HackNewRm)
 	}
 
-	authG := api.Use(mwJwt)
+	authG := api.Use(internal.MwUserAdmin)
 	{
 
 		//create wslog hook
@@ -113,7 +116,7 @@ func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration,
 		authG.PATCH("ssh-log", internal.SshLogUpdate)
 
 		authG.GET("user", internal.UserAll)
-		authG.POST("user", internal.UserCreate)
+		authG.POST("user", internal.RegisterCommenter)
 		//api.GET("user/:id", internal.SshAll)
 		authG.DELETE("user/:id", internal.UserDelete)
 		authG.PATCH("user", internal.UserUpdate)

@@ -64,7 +64,7 @@ func (m *SshLog) Update() (err error) {
 	return db.Model(m).Update(m).Error
 }
 
-//Create
+//CreateUserOfRole
 func (m *SshLog) Create() (err error) {
 	m.Id = 0
 	return db.Create(m).Error

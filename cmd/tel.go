@@ -11,6 +11,7 @@ var telCmd = &cobra.Command{
 	Short: "fake ssh server",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
+		fssh.LoadOrCreateKey()
 		fssh.ThisRun()
 	},
 }

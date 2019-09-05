@@ -320,12 +320,12 @@ func (m *{{.ModelName}}) Update() (err error) {
 	{{end}}
 	return crudUpdate(m, where)
 }
-//Create
-func (m *{{.ModelName}}) Create() (err error) {
+//CreateUserOfRole
+func (m *{{.ModelName}}) CreateUserOfRole() (err error) {
 	m.Id = 0
     {{if .IsAuthTable }}m.makePassword()
     {{end}}
-	return db.Create(m).Error
+	return db.CreateUserOfRole(m).Error
 }
 //Delete
 func (m *{{.ModelName}}) Delete() (err error) {
@@ -494,7 +494,7 @@ import (
 func init() {
 	groupApi.GET("{{.ResourceName}}",{{if .IsAuthTable}}jwtMiddleware,{{end}} {{.HandlerName}}All)
 	{{if .HasId}}groupApi.GET("{{.ResourceName}}/:id", {{if .IsAuthTable}}jwtMiddleware,{{end}} {{.HandlerName}}One){{end}}
-	groupApi.POST("{{.ResourceName}}", {{if .IsAuthTable}}jwtMiddleware,{{end}} {{.HandlerName}}Create)
+	groupApi.POST("{{.ResourceName}}", {{if .IsAuthTable}}jwtMiddleware,{{end}} {{.HandlerName}}CreateUserOfRole)
 	groupApi.PATCH("{{.ResourceName}}", {{if .IsAuthTable}}jwtMiddleware,{{end}} {{.HandlerName}}Update)
 	{{if .HasId}}groupApi.DELETE("{{.ResourceName}}/:id", {{if .IsAuthTable}}jwtMiddleware,{{end}} {{.HandlerName}}Delete){{end}}
 }
@@ -528,14 +528,14 @@ func {{.HandlerName}}One(c *gin.Context) {
 	jsonData(c, data)
 }
 {{end}}
-//Create
-func {{.HandlerName}}Create(c *gin.Context) {
+//CreateUserOfRole
+func {{.HandlerName}}CreateUserOfRole(c *gin.Context) {
 	var mdl model.{{.ModelName}}
 	err := c.ShouldBind(&mdl)
 	if handleError(c, err) {
 		return
 	}
-	err = mdl.Create()
+	err = mdl.CreateUserOfRole()
 	if handleError(c, err) {
 		return
 	}
@@ -599,7 +599,7 @@ import (
 func init() {
 	groupApi.GET("{{.ResourceName}}",{{.HandlerName}}All)
 	groupApi.GET("{{.ResourceName}}/:id", {{.HandlerName}}One)
-	groupApi.POST("{{.ResourceName}}", {{.HandlerName}}Create)
+	groupApi.POST("{{.ResourceName}}", {{.HandlerName}}CreateUserOfRole)
 	groupApi.PATCH("{{.ResourceName}}", {{.HandlerName}}Update)
 	groupApi.DELETE("{{.ResourceName}}/:id", {{.HandlerName}}Delete)
 }
@@ -612,8 +612,8 @@ func {{.HandlerName}}One(c *gin.Context) {
 
 
 }
-//Create
-func {{.HandlerName}}Create(c *gin.Context) {
+//CreateUserOfRole
+func {{.HandlerName}}CreateUserOfRole(c *gin.Context) {
 
 }
 //Update
@@ -1331,7 +1331,7 @@ type Job struct {
 	fparams map[string]([]interface{})
 }
 
-// Create a new job with the time interval.
+// CreateUserOfRole a new job with the time interval.
 func NewJob(intervel uint64) *Job {
 	return &Job{
 		intervel,
@@ -1649,7 +1649,7 @@ func (s *Scheduler) Less(i, j int) bool {
 	return s.jobs[j].nextRun.After(s.jobs[i].nextRun)
 }
 
-// Create a new scheduler
+// CreateUserOfRole a new scheduler
 func NewScheduler() *Scheduler {
 	return &Scheduler{[MAXJOBNUM]*Job{}, 0}
 }

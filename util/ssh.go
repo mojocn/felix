@@ -10,7 +10,7 @@ import (
 )
 
 func publicKeyAuthFunc(pemBytes, keyPassword []byte) ssh.AuthMethod {
-	// Create the Signer for this private key.
+	// CreateUserOfRole the Signer for this private key.
 	signer, err := ssh.ParsePrivateKeyWithPassphrase(pemBytes, keyPassword)
 	if err != nil {
 		logrus.WithError(err).Error("parse ssh key from bytes failed")

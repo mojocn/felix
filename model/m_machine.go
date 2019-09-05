@@ -88,7 +88,7 @@ func (m *Machine) Update() (err error) {
 	return db.Model(m).Update(m).Error
 }
 
-//Create insert a row
+//CreateUserOfRole insert a row
 func (m *Machine) Create() (err error) {
 	m.Id = 0
 	return db.Create(m).Error

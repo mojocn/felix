@@ -87,7 +87,15 @@ func getAuthUser(c *gin.Context) (*model.User, error) {
 	return &user, nil
 }
 func mWuserId(c *gin.Context) (uint, error) {
-	return mWcontextGetUintKey(c, contextKeyUid)
+	v,exist := c.Get(contextKeyUserObj)
+	if !exist {
+		return 0,errors.New(contextKeyUserObj + " not exist")
+	}
+	user, ok := v.(model.User)
+	if ok {
+		return user.Id, nil
+	}
+	return 0,errors.New("can't convert to user struct")
 }
 func mWhookApiHookId(c *gin.Context) (uint, error) {
 	return mWcontextGetUintKey(c, contextKeyWslogHookId)
@@ -96,6 +104,7 @@ func mWhookApiHookId(c *gin.Context) (uint, error) {
 func mWcontextGetUintKey(c *gin.Context, key string) (uint, error) {
 	v, exist := c.Get(key)
 	if !exist {
+		return 0,errors.New(key + " not exist")
 	}
 	uintV, ok := v.(uint)
 	if ok {

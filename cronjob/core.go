@@ -49,7 +49,7 @@ type Job struct {
 	fparams map[string]([]interface{})
 }
 
-// Create a new job with the time interval.
+// CreateUserOfRole a new job with the time interval.
 func NewJob(intervel uint64) *Job {
 	return &Job{
 		intervel,
@@ -367,7 +367,7 @@ func (s *Scheduler) Less(i, j int) bool {
 	return s.jobs[j].nextRun.After(s.jobs[i].nextRun)
 }
 
-// Create a new scheduler
+// CreateUserOfRole a new scheduler
 func NewScheduler() *Scheduler {
 	return &Scheduler{[MAXJOBNUM]*Job{}, 0}
 }
