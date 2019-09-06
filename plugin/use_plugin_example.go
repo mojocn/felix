@@ -11,14 +11,12 @@ type GoodDoctor interface {
 	HealthCheck() error
 }
 
-func ini()  {
+func init()  {
 	log.Println("main package init function called")
 }
 
 func main() {
 	log.Println("main function stared")
-
-
 	// load module 插件你也可以使用go http.Request从远程下载到本地,在加载做到动态的执行不同的功能
 	// 1. open the so file to load the symbols
 
@@ -38,7 +36,7 @@ func main() {
 	}
 
 	// 3. Assert that loaded symbol is of a desired type
-	// in this case interface type Greeter (defined above)
+	// in this case interface type GoodDoctor (defined above)
 	doctor, ok := doc.(GoodDoctor)
 	if !ok {
 		fmt.Println("unexpected type from module symbol")

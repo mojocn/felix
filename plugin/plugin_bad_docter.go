@@ -23,7 +23,7 @@ func (g BadNastyDoctor) HealthCheck() error {
 	return nil
 }
 
-//go build -buildmode=plugin -o chi/chi.so chi/greeter.go
+//go build -buildmode=plugin -o=plugin_doctor.so plugin_bad_docter.go
 
-// exported as symbol named "Greeter"
+// exported as symbol named "Doctor"
 var Doctor = BadNastyDoctor(time.Now().Format(time.RFC3339))
