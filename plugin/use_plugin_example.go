@@ -28,7 +28,7 @@ func main() {
 	log.Println("plugin opened")
 
 	// 2. look up a symbol (an exported function or variable)
-	// in this case, variable Greeter
+	// in this case, variable Doctor
 	doc, err := plug.Lookup("Doctor")
 	if err != nil {
 		fmt.Println(err)
