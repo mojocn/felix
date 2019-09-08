@@ -33,13 +33,13 @@ Hacker News 是一家关于计算机黑客和创业公司的社会化新闻网�
 ## HackNews Hack新闻
 
 {{range .News}}
-- [{{.TitleEn}}]({{.Url}})
+<li><a href="{{.Url}}" rel="nofollow noreferrer">{{.TitleEn}}</a></li>
 - _[BACKQUOTE]_{{.TitleZh}}_[BACKQUOTE]_{{end}}
 
 
 ## HackShows Hacks展示
 {{range .Shows}}
-- [{{.TitleEn}}]({{.Url}})
+<li><a href="{{.Url}}" rel="nofollow noreferrer">{{.TitleEn}}</a></li>
 - _[BACKQUOTE]_{{.TitleZh}}_[BACKQUOTE]_{{end}}
 
 `
