@@ -32,15 +32,16 @@ Hacker News 是一家关于计算机黑客和创业公司的社会化新闻网�
 
 ## HackNews Hack新闻
 
-<ul>{{range .News}}
-<li><a href="{{.Url}}" rel="nofollow noreferrer">{{.TitleEn}}</a></li>
-<li>{{.TitleZh}}</li>{{end}}</ul>
+{{range .News}}
+- [{{.TitleEn}}]({{.Url}})
+- _[BACKQUOTE]_{{.TitleZh}}_[BACKQUOTE]_{{end}}
 
 
 ## HackShows Hacks展示
-<ul>{{range .Shows}}
-<li><a href="{{.Url}}" rel="nofollow noreferrer">{{.TitleEn}}</a></li>
-<li>{{.TitleZh}}</li>{{end}}</ul>
+{{range .Shows}}
+- [{{.TitleEn}}]({{.Url}})
+- _[BACKQUOTE]_{{.TitleZh}}_[BACKQUOTE]_{{end}}
+
 `
 const hackNewsUrl = "https://news.ycombinator.com/news"
 
