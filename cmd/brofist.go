@@ -5,7 +5,6 @@ import (
 	"github.com/dejavuzhou/felix/util"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -24,7 +23,6 @@ var broFistCmd = &cobra.Command{
 		time.Sleep(time.Second * 2)
 		util.BrowserOpen("https://www.youtube.com/channel/UC-lHJZR3Gqxm24_Vd_AJ5Yw")
 
-		ii,err = strconv.ParseInt("855")
 	},
 }
 
