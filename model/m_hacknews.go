@@ -4,10 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -107,14 +109,26 @@ func TranslateCh2En(text string) (string, error) {
 }
 
 func TranslateEn2Ch(text string) (string, error) {
-	res, err := youdaoTranslateApi(text, "EN", "zh-CHS")
+	url := fmt.Sprintf("https://translate.googleapis.com/translate_a/single?client=gtx&sl=ene&tl=zh-cn&dt=t&q=%s",url.QueryEscape(text))
+	resp,err := http.Get(url)
 	if err != nil {
 		return "", err
 	}
-	if len(res.Translation) > 0 {
-		return res.Translation[0], nil
+	defer resp.Body.Close()
+	if err != nil {
+		return "", err
 	}
-	return "", nil
+	bs,err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	ss := string(bs)
+	ss = strings.ReplaceAll(ss,"[","")
+	ss = strings.ReplaceAll(ss,"]","")
+	ss = strings.ReplaceAll(ss,"null,","")
+	ss = strings.Trim(ss,`"`)
+	ps := strings.Split(ss,`","`)
+	return ps[0], nil
 }
 
 func youdaoTranslateApi(q, from, to string) (obj *respObj, err error) {
