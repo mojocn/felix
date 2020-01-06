@@ -71,6 +71,9 @@ func SpiderHackNews() error {
 	doc.Find("a.storylink").Each(func(i int, s *goquery.Selection) {
 		//todo 相对地址解析
 		url, _ := s.Attr("href")
+		if strings.HasPrefix(url,"/"){
+			url = "https://news.ycombinator.com" + url
+		}
 		titleEn := s.Text()
 		titleEn = strings.ReplaceAll(titleEn, "[", "")
 		titleEn = strings.ReplaceAll(titleEn, "]", "")
@@ -130,8 +133,8 @@ func SpiderHackShows() error {
 	}
 	doc.Find("a.storylink").Each(func(i int, s *goquery.Selection) {
 		url, _ := s.Attr("href")
-		if !strings.Contains(url, "http") {
-			url = "https://news.ycombinator.com/" + url
+		if strings.HasPrefix(url,"/"){
+			url = "https://news.ycombinator.com" + url
 		}
 		titleEn := s.Text()
 		titleEn = strings.ReplaceAll(titleEn, "[", "")
