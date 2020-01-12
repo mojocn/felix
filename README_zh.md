@@ -11,7 +11,7 @@
 ## 能做什么?
 
 - 管理大量SSH连接配置
-- 快速的使用SSH登陆功能和再应用层免去输入sudo密码
+- 快速的使用SSH登陆功能和在应用层免去输入sudo密码
 - 快速的根据SQL数据库表结构生成RESTfual Golang APIs 代码 [gin-gonic/gin](https://github.com/gin-gonic/gin) and [GORM](https://github.com/jinzhu/gorm) in GO
 - 利用SSH快速的开启TCP和SOCKS5/4 代理
 - 建议的命令行TODO-LIST
