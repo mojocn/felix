@@ -3,6 +3,7 @@ package model
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -109,25 +110,28 @@ func TranslateCh2En(text string) (string, error) {
 }
 
 func TranslateEn2Ch(text string) (string, error) {
-	url := fmt.Sprintf("https://translate.googleapis.com/translate_a/single?client=gtx&sl=ene&tl=zh-cn&dt=t&q=%s",url.QueryEscape(text))
-	resp,err := http.Get(url)
+	url := fmt.Sprintf("https://translate.googleapis.com/translate_a/single?client=gtx&sl=ene&tl=zh-cn&dt=t&q=%s", url.QueryEscape(text))
+	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
+	}
+	if resp.StatusCode != 200 {
+		return "", errors.New("google translate api status code not 200")
 	}
 	defer resp.Body.Close()
 	if err != nil {
 		return "", err
 	}
-	bs,err := ioutil.ReadAll(resp.Body)
+	bs, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
 	ss := string(bs)
-	ss = strings.ReplaceAll(ss,"[","")
-	ss = strings.ReplaceAll(ss,"]","")
-	ss = strings.ReplaceAll(ss,"null,","")
-	ss = strings.Trim(ss,`"`)
-	ps := strings.Split(ss,`","`)
+	ss = strings.ReplaceAll(ss, "[", "")
+	ss = strings.ReplaceAll(ss, "]", "")
+	ss = strings.ReplaceAll(ss, "null,", "")
+	ss = strings.Trim(ss, `"`)
+	ps := strings.Split(ss, `","`)
 	return ps[0], nil
 }
 

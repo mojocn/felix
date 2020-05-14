@@ -71,7 +71,7 @@ func SpiderHackNews() error {
 	doc.Find("a.storylink").Each(func(i int, s *goquery.Selection) {
 		//todo 相对地址解析
 		url, _ := s.Attr("href")
-		if strings.HasPrefix(url,"/"){
+		if strings.HasPrefix(url, "/") {
 			url = "https://news.ycombinator.com" + url
 		}
 		titleEn := s.Text()
@@ -79,6 +79,7 @@ func SpiderHackNews() error {
 		titleEn = strings.ReplaceAll(titleEn, "]", "")
 		newsItem := model.HackNew{TitleEn: titleEn, Url: url, Cate: "hacknews"}
 		err = newsItem.CreateOrUpdate()
+		time.Sleep(time.Second * 10)
 		if err != nil {
 			logrus.WithError(err).Error("goquery Each save news to db failed")
 		}
@@ -133,7 +134,7 @@ func SpiderHackShows() error {
 	}
 	doc.Find("a.storylink").Each(func(i int, s *goquery.Selection) {
 		url, _ := s.Attr("href")
-		if strings.HasPrefix(url,"/"){
+		if strings.HasPrefix(url, "/") {
 			url = "https://news.ycombinator.com" + url
 		}
 		titleEn := s.Text()

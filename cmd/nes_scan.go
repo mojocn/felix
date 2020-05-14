@@ -27,19 +27,23 @@ var nesScanCmd = &cobra.Command{
 			if info.IsDir() && info.Name() != "NESroms" {
 				fmt.Fprintf(fw, "%s:\n", info.Name())
 			} else {
+				if strings.Contains(path, "Hack") || strings.Contains(path, "hack") {
+					os.Remove(path)
+				}
 
 				if strings.HasSuffix(path, ".nes") {
 					thisDir := filepath.Dir(path)
-					fileName := strings.Replace(info.Name(), " ", "_", -1)
-					fileName = strings.Replace(fileName, "!", "x", -1)
-					fileName = strings.Replace(fileName, ",", "_", -1)
-					fileName = strings.Replace(fileName, "&", "and", -1)
-					fileName = strings.Replace(fileName, "._", "_", -1)
-					fileName = strings.Replace(fileName, "-", "_", -1)
-					fileName = strings.Replace(fileName, "(", "_", -1)
-					fileName = strings.Replace(fileName, ")", "_", -1)
-					fileName = strings.Replace(fileName, "[", "_", -1)
-					fileName = strings.Replace(fileName, "]", "_", -1)
+					fileName := strings.ToLower(info.Name())
+					fileName = strings.Replace(fileName, "final_fight", "快打旋风 ", -1)
+					fileName = strings.Replace(fileName, "contra", "魂斗罗", -1)
+					fileName = strings.Replace(fileName, "donkey_kong", "金刚", -1)
+					fileName = strings.Replace(fileName, "double_dragon", "双截龙", -1)
+					fileName = strings.Replace(fileName, "super_mario_bros", "超级玛丽兄弟", -1)
+					fileName = strings.Replace(fileName, "dragon_ball", "龙珠", -1)
+					fileName = strings.Replace(fileName, "final_fantasy", "最终幻想", -1)
+					fileName = strings.Replace(fileName, "transformers", "变形金刚", -1)
+					fileName = strings.Replace(fileName, "dragon_warrior", "龙战士", -1)
+					fileName = strings.Replace(fileName, "indiana_jones", "印第安纳琼斯", -1)
 					fileName = strings.Replace(fileName, "___", "_", -1)
 					fileName = strings.Replace(fileName, "__", "_", -1)
 					fileName = strings.Replace(fileName, "_.", ".", -1)
