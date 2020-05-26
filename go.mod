@@ -1,4 +1,4 @@
-module github.com/dejavuzhou/felix
+module github.com/libragen/felix
 
 go 1.12
 
