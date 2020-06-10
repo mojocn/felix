@@ -23,7 +23,7 @@ func (n *tplNode) ParseExecute(appDir, pathArg string, data interface{}) error {
 		p = n.NameFormat
 	}
 	p = filepath.Clean(filepath.Join(appDir, p))
-	err := os.MkdirAll(filepath.Dir(p), 644)
+	err := os.MkdirAll(filepath.Dir(p), 0644)
 	if err != nil {
 		return err
 	}
