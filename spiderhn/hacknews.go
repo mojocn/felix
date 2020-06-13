@@ -112,7 +112,7 @@ func ParsemarkdownHacknews() error {
 	if err != nil {
 		return err
 	}
-	day := time.Now().Format("2006-01-02")
+	day := time.Now().In(time.Local).Format("2006-01-02")
 	mdFile := fmt.Sprintf("%s-hacknews.md", day)
 	mdFilePath := filepath.Join(techMojotvCnSrcDir, "_posts", "hacknews", mdFile)
 	mdFile = filepath.Clean(mdFilePath)
