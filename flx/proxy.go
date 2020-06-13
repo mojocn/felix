@@ -5,7 +5,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/dejavuzhou/felix/model"
+	"github.com/libragen/felix/model"
 	"golang.org/x/crypto/ssh"
 )
 

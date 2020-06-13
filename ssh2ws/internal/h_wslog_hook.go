@@ -1,9 +1,9 @@
 package internal
 
 import (
-	"github.com/dejavuzhou/felix/model"
-	"github.com/dejavuzhou/felix/wslog"
 	"github.com/gin-gonic/gin"
+	"github.com/libragen/felix/model"
+	"github.com/libragen/felix/wslog"
 )
 
 func WslogHookCreate(c *gin.Context) {

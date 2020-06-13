@@ -1,6 +1,6 @@
 package main
 
-import "github.com/dejavuzhou/felix/cmd"
+import "github.com/libragen/felix/cmd"
 
 var buildTime, gitHash string
 

@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/dejavuzhou/felix/util"
 	"github.com/fatih/color"
+	"github.com/libragen/felix/util"
 	"strconv"
 
 	"github.com/spf13/cobra"

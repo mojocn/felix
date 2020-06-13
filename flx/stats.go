@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dejavuzhou/felix/model"
 	"github.com/fatih/color"
+	"github.com/libragen/felix/model"
 	"golang.org/x/crypto/ssh"
 )
 

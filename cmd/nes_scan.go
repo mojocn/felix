@@ -44,6 +44,7 @@ var nesScanCmd = &cobra.Command{
 					fileName = strings.Replace(fileName, "transformers", "变形金刚", -1)
 					fileName = strings.Replace(fileName, "dragon_warrior", "龙战士", -1)
 					fileName = strings.Replace(fileName, "indiana_jones", "印第安纳琼斯", -1)
+					fileName = strings.Replace(fileName, "dale_rescue_rangers", "松鼠大作战", -1)
 					fileName = strings.Replace(fileName, "___", "_", -1)
 					fileName = strings.Replace(fileName, "__", "_", -1)
 					fileName = strings.Replace(fileName, "_.", ".", -1)

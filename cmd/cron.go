@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/dejavuzhou/felix/cronjob"
+	"github.com/libragen/felix/cronjob"
 	"github.com/spf13/cobra"
 )
 

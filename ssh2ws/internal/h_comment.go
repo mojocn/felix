@@ -3,8 +3,8 @@ package internal
 import (
 	"strings"
 
-	"github.com/dejavuzhou/felix/model"
 	"github.com/gin-gonic/gin"
+	"github.com/libragen/felix/model"
 )
 
 func CommentAll(c *gin.Context) {

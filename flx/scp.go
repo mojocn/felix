@@ -3,7 +3,7 @@ package flx
 import (
 	"path/filepath"
 
-	"github.com/dejavuzhou/felix/model"
+	"github.com/libragen/felix/model"
 	"github.com/pkg/sftp"
 )
 

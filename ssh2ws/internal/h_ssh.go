@@ -1,9 +1,9 @@
 package internal
 
 import (
-	"github.com/dejavuzhou/felix/flx"
-	"github.com/dejavuzhou/felix/model"
 	"github.com/gin-gonic/gin"
+	"github.com/libragen/felix/flx"
+	"github.com/libragen/felix/model"
 )
 
 func SshAll(c *gin.Context) {

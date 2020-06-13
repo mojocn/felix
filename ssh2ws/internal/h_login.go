@@ -1,8 +1,8 @@
 package internal
 
 import (
-	"github.com/dejavuzhou/felix/model"
 	"github.com/gin-gonic/gin"
+	"github.com/libragen/felix/model"
 	"github.com/spf13/viper"
 )
 

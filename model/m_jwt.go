@@ -10,7 +10,7 @@ import (
 )
 
 var AppSecret = ""
-var AppIss = "github.com/dejavuzhou/felix"
+var AppIss = "github.com/libragen/felix"
 var ExpireTime = time.Hour * 24
 
 type userStdClaims struct {
@@ -20,10 +20,10 @@ type userStdClaims struct {
 
 func (c userStdClaims) Valid() (err error) {
 	if c.VerifyExpiresAt(time.Now().Unix(), true) == false {
-		return  errors.New("token is expired")
+		return errors.New("token is expired")
 	}
 	if !c.VerifyIssuer(AppIss, true) {
-		return  errors.New("token's issuer is wrong")
+		return errors.New("token's issuer is wrong")
 	}
 	if c.User.Id < 1 {
 		return errors.New("invalid user in jwt")
@@ -31,7 +31,7 @@ func (c userStdClaims) Valid() (err error) {
 	return
 }
 
-func jwtGenerateToken(m *User,d time.Duration) (string, error) {
+func jwtGenerateToken(m *User, d time.Duration) (string, error) {
 	m.Password = ""
 	expireTime := time.Now().Add(d)
 	stdClaims := jwt.StandardClaims{
@@ -54,7 +54,6 @@ func jwtGenerateToken(m *User,d time.Duration) (string, error) {
 	}
 	return tokenString, err
 }
-
 
 //JwtParseUser
 func JwtParseUser(tokenString string) (*User, error) {

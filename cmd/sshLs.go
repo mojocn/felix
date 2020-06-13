@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/dejavuzhou/felix/flx"
+	"github.com/libragen/felix/flx"
 	"github.com/spf13/cobra"
 )
 

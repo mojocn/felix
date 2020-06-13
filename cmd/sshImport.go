@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dejavuzhou/felix/model"
 	"github.com/fatih/color"
+	"github.com/libragen/felix/model"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 )

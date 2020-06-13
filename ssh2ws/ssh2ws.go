@@ -3,12 +3,12 @@ package ssh2ws
 import (
 	"time"
 
-	"github.com/dejavuzhou/felix/felixbin"
-	"github.com/dejavuzhou/felix/model"
-	"github.com/dejavuzhou/felix/ssh2ws/internal"
-	"github.com/dejavuzhou/felix/wslog"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/libragen/felix/felixbin"
+	"github.com/libragen/felix/model"
+	"github.com/libragen/felix/ssh2ws/internal"
+	"github.com/libragen/felix/wslog"
 )
 
 func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration, verbose bool) error {
@@ -43,7 +43,6 @@ func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration,
 		MaxAge: 2400 * time.Hour,
 	})
 	r.Use(binStaticMiddleware, mwCORS)
-
 
 	{
 		r.POST("comment-login", internal.LoginCommenter)       //评论用户登陆
@@ -83,7 +82,7 @@ func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration,
 		api.DELETE("comment/:id", internal.MwUserAdmin, internal.CommentDelete)
 	}
 	{
-		api.GET("hacknews",internal.MwUserAdmin, internal.HackNewAll)
+		api.GET("hacknews", internal.MwUserAdmin, internal.HackNewAll)
 		api.PATCH("hacknews", internal.HackNewUpdate)
 		api.POST("hacknews-rm", internal.HackNewRm)
 	}

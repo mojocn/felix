@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dejavuzhou/felix/model"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/libragen/felix/model"
 	"github.com/sirupsen/logrus"
 )
 

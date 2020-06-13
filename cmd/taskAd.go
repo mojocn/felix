@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/dejavuzhou/felix/model"
 	"github.com/fatih/color"
+	"github.com/libragen/felix/model"
 	"github.com/spf13/cobra"
 )
 

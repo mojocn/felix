@@ -2,8 +2,8 @@ package fssh
 
 import (
 	"fmt"
-	"github.com/dejavuzhou/felix/util"
 	"github.com/gliderlabs/ssh"
+	"github.com/libragen/felix/util"
 	"github.com/sirupsen/logrus"
 	gossh "golang.org/x/crypto/ssh"
 	"io"
@@ -29,7 +29,6 @@ func Run() {
 		Addr:            ":88",
 		Handler:         helloHandler,
 		PasswordHandler: passwordH,
-
 	}
 	s.AddHostKey(hostKeySigner)
 	log.Fatal(s.ListenAndServe())

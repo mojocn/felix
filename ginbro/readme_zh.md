@@ -1,11 +1,11 @@
 # ginbro(gin and gorm's brother) 详解
 
-[![](/images/ginbro_coverage.jpg)](https://github.com/dejavuzhou/felix)
+[![](/images/ginbro_coverage.jpg)](https://github.com/libragen/felix)
 
 ## 安装felix
 
 ```bash
-git clone https://github.com/dejavuzhou/felix
+git clone https://github.com/libragen/felix
 cd felix
 go mod download
 
@@ -14,7 +14,7 @@ echo "添加 GOBIN 到 PATH环境变量"
 
 echo "或者"
 
-go get github.com/dejavuzhou/felix
+go get github.com/libragen/felix
 
 echo "go build && ./felix -h"
 
@@ -101,7 +101,7 @@ Flags:
 对于那些喜欢使用命令行的同学,你们可以选择使用web界面来操作
 
 ```bash
-git clone https://github.com/dejavuzhou/felix
+git clone https://github.com/libragen/felix
 cd felix
 go mod download
 
@@ -177,13 +177,13 @@ Flags:
 ### 使用说明:生成的二进制化go文件
 
 vuejs/dist 使用 `felix ginbin` 生成的go文件
-[https://github.com/dejavuzhou/felix/blob/master/staticbin/gin_static.go](https://github.com/dejavuzhou/felix/tree/master/staticbin)
+[https://github.com/libragen/felix/blob/master/staticbin/gin_static.go](https://github.com/libragen/felix/tree/master/staticbin)
 
 gin 路由应用二进制化的前端代码中间件如下:
 
-`import "github.com/dejavuzhou/felix/staticbin" //导入felix ginbin 生成的二进制化包`
+`import "github.com/libragen/felix/staticbin" //导入felix ginbin 生成的二进制化包`
 
-[https://github.com/dejavuzhou/felix/blob/master/ssh2ws/ssh2ws.go](https://github.com/dejavuzhou/felix/blob/master/ssh2ws/ssh2ws.go)
+[https://github.com/libragen/felix/blob/master/ssh2ws/ssh2ws.go](https://github.com/libragen/felix/blob/master/ssh2ws/ssh2ws.go)
 
 ````bash
 	r := gin.Default()
@@ -199,7 +199,7 @@ gin 路由应用二进制化的前端代码中间件如下:
 
 ## 引用和代码仓库
 
-### [dejavuzhou/felix Golang 工具集](https://github.com/dejavuzhou/felix)
-### [felix ginbro 命令逻辑代码目录](https://github.com/dejavuzhou/felix/tree/master/ginbro)
-### [前端代码二进制化成gin中间件代码](https://github.com/dejavuzhou/felix/blob/master/ginbro/ginstatic.go)
+### [dejavuzhou/felix Golang 工具集](https://github.com/libragen/felix)
+### [felix ginbro 命令逻辑代码目录](https://github.com/libragen/felix/tree/master/ginbro)
+### [前端代码二进制化成gin中间件代码](https://github.com/libragen/felix/blob/master/ginbro/ginstatic.go)
 ### 文章来源 [MojoTech](https://tech.mojotv.cn/2019/05/22/golang-felix-ginbro)

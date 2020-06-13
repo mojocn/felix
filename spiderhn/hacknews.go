@@ -1,6 +1,7 @@
 package spiderhn
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/dejavuzhou/felix/model"
+	"github.com/libragen/felix/model"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -46,7 +47,10 @@ Hacker News 是一家关于计算机黑客和创业公司的社会化新闻网�
 const hackNewsUrl = "https://news.ycombinator.com/news"
 
 func downloadHtml(url string) (*goquery.Document, error) {
-	client := &http.Client{}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr, Timeout: time.Second * 60}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err

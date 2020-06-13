@@ -9,7 +9,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/dejavuzhou/felix/model"
+	"github.com/libragen/felix/model"
 )
 
 type socksDialer interface {

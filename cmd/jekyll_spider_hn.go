@@ -3,7 +3,7 @@ package cmd
 import (
 	"time"
 
-	"github.com/dejavuzhou/felix/spiderhn"
+	"github.com/libragen/felix/spiderhn"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

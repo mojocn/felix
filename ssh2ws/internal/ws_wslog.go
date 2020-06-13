@@ -1,8 +1,8 @@
 package internal
 
 import (
-	"github.com/dejavuzhou/felix/wslog"
 	"github.com/gin-gonic/gin"
+	"github.com/libragen/felix/wslog"
 )
 
 func Wslog(hub *wslog.Hub) gin.HandlerFunc {

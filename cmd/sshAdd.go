@@ -3,7 +3,7 @@ package cmd
 import (
 	"log"
 
-	"github.com/dejavuzhou/felix/model"
+	"github.com/libragen/felix/model"
 	"github.com/spf13/cobra"
 )
 

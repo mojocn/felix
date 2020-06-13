@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/dejavuzhou/felix/ginbro"
-	"github.com/dejavuzhou/felix/model"
+	"github.com/libragen/felix/ginbro"
+	"github.com/libragen/felix/model"
 	"github.com/spf13/cobra"
 )
 
