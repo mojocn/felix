@@ -1,7 +1,6 @@
 # Felix [中文](README_zh.md)
 [![Build Status](https://travis-ci.org/libragen/felix.svg?branch=master)](https://travis-ci.org/libragen/felix)
 [![Go Report Card](https://goreportcard.com/badge/github.com/libragen/felix)](https://goreportcard.com/report/github.com/libragen/felix)
-## Thanks to [360 Total Security](http://www.360totalsecurity.com/) and [360-web-platform ](https://github.com/Qihoo360)
 ## For Whom
 
 - BackEnd Engineer
