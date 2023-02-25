@@ -31,5 +31,5 @@ require (
 	github.com/spf13/viper v1.4.0
 	golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
 	golang.org/x/net v0.0.0-20190522155817-f3200d17e092
-	golang.org/x/sys v0.0.0-20190507160741-ecd444e8653b
+	golang.org/x/sys v0.1.0
 )
