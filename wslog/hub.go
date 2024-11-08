@@ -1,6 +1,6 @@
 package wslog
 
-import "github.com/libragen/felix/model"
+import "github.com/mojocn/felix/model"
 
 // Hub maintains the set of active clients and broadcasts messages to the
 // clients.

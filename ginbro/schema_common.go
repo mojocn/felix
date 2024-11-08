@@ -9,7 +9,7 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 )
 
 func newDb(dbType, addr, user, password, database, charset string) (*sql.DB, error) {

@@ -4,8 +4,8 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/libragen/felix/flx"
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/flx"
+	"github.com/mojocn/felix/model"
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +13,7 @@ import (
 var uploadCmd = &cobra.Command{
 	Use:   "scpu",
 	Short: "scp upload a file or a folder",
-	Long: `usage: felix sshup 1 --remote=/data/temp --local=/c/Users/Felix/go/src/github.com/libragen/felix
+	Long: `usage: felix sshup 1 --remote=/data/temp --local=/c/Users/Felix/go/src/github.com/mojocn/felix
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		dbId, err := strconv.ParseUint(args[0], 10, 64)

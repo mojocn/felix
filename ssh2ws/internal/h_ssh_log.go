@@ -2,7 +2,7 @@ package internal
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 )
 
 func SshLogAll(c *gin.Context) {

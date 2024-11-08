@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/libragen/felix/util"
+	"github.com/mojocn/felix/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

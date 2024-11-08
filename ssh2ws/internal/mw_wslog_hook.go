@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 )
 
 const contextKeyWslogHookId = "wslogHookID"

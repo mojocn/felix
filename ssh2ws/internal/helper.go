@@ -9,7 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 	"github.com/sirupsen/logrus"
 )
 

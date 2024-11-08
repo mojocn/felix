@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 	"golang.org/x/crypto/ssh"
 )
 

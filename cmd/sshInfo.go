@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/fatih/color"
-	"github.com/libragen/felix/flx"
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/flx"
+	"github.com/mojocn/felix/model"
 	"github.com/mattn/go-isatty"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"

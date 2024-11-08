@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 )
 
 func TestRun(t *testing.T) {

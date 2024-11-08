@@ -3,7 +3,7 @@ package fssh
 import (
 	"fmt"
 	"github.com/gliderlabs/ssh"
-	"github.com/libragen/felix/util"
+	"github.com/mojocn/felix/util"
 	"github.com/sirupsen/logrus"
 	gossh "golang.org/x/crypto/ssh"
 	"io"

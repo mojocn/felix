@@ -2,7 +2,7 @@ package internal
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/libragen/felix/wslog"
+	"github.com/mojocn/felix/wslog"
 )
 
 func Wslog(hub *wslog.Hub) gin.HandlerFunc {

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/libragen/felix/fssh"
+	"github.com/mojocn/felix/fssh"
 	"github.com/spf13/cobra"
 )
 

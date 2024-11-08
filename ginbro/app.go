@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/libragen/felix/model"
-	"github.com/libragen/felix/util"
+	"github.com/mojocn/felix/model"
+	"github.com/mojocn/felix/util"
 	"github.com/sirupsen/logrus"
 )
 

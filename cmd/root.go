@@ -7,7 +7,7 @@ import (
 
 	"github.com/johntdyer/slackrus"
 
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -22,7 +22,7 @@ var rootCmd = &cobra.Command{
 		if isShowVersion {
 			fmt.Println("Golang Env: %s %s/%s", runtime.Version(), runtime.GOOS, runtime.GOARCH)
 			fmt.Println("UTC build time:%s", buildTime)
-			fmt.Println("Build from Github repo version: https://github.com/libragen/felix/commit/%s", gitHash)
+			fmt.Println("Build from Github repo version: https://github.com/mojocn/felix/commit/%s", gitHash)
 		}
 
 	},

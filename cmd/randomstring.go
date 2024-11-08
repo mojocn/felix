@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/libragen/felix/util"
+	"github.com/mojocn/felix/util"
 	"strconv"
 
 	"github.com/spf13/cobra"

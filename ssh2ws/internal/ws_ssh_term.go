@@ -7,9 +7,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/libragen/felix/flx"
-	"github.com/libragen/felix/model"
-	"github.com/libragen/felix/util"
+	"github.com/mojocn/felix/flx"
+	"github.com/mojocn/felix/model"
+	"github.com/mojocn/felix/util"
 )
 
 var upGrader = websocket.Upgrader{

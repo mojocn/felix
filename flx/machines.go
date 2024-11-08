@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 	"github.com/mattn/go-isatty"
 	"github.com/olekukonko/tablewriter"
 )

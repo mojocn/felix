@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 )

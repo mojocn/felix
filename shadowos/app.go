@@ -3,7 +3,7 @@ package shadowos
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/libragen/felix/util"
+	"github.com/mojocn/felix/util"
 	"io"
 	"log"
 	"net"

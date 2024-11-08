@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 	"github.com/pkg/sftp"
 )
 

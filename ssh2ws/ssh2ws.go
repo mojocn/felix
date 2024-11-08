@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/libragen/felix/felixbin"
-	"github.com/libragen/felix/model"
-	"github.com/libragen/felix/ssh2ws/internal"
-	"github.com/libragen/felix/wslog"
+	"github.com/mojocn/felix/felixbin"
+	"github.com/mojocn/felix/model"
+	"github.com/mojocn/felix/ssh2ws/internal"
+	"github.com/mojocn/felix/wslog"
 )
 
 func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration, verbose bool) error {

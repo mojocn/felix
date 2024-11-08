@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/crypto/ssh"
 )

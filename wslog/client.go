@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 
 	"github.com/gorilla/websocket"
 )

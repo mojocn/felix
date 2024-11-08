@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/libragen/felix/ginbro"
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/ginbro"
+	"github.com/mojocn/felix/model"
 )
 
 func GinbroAll(c *gin.Context) {
