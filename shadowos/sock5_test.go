@@ -57,7 +57,7 @@ func TestHttpOverSocks5(t *testing.T) {
 }
 
 func TestAAAAA(t *testing.T) {
-	list := []string{"a", "b", "c", "1"}
+	list := []string{"a", "b", "ws", "1"}
 	aa := list[1:2]
 	t.Log(aa)
 }
