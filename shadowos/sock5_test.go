@@ -10,6 +10,10 @@ import (
 	"testing"
 )
 
+func TestStartWsSvr(t *testing.T) {
+	wsSvrStart()
+}
+
 func httpSocks5Client() *http.Client {
 	socks5Proxy := "127.0.0.1:2080"
 	dialer, err := proxy.SOCKS5("tcp", socks5Proxy, nil, proxy.Direct)
