@@ -1,6 +1,6 @@
 module github.com/mojocn/felix
 
-go 1.23
+go 1.22
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.0

@@ -15,7 +15,7 @@ func TestAesDecryptEn(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if tMsg != msg {
+	if string(tMsg) != msg {
 		t.Error("aes failed")
 	}
 }

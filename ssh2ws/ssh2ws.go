@@ -8,7 +8,6 @@ import (
 	"github.com/mojocn/felix/felixbin"
 	"github.com/mojocn/felix/model"
 	"github.com/mojocn/felix/ssh2ws/internal"
-	"github.com/mojocn/felix/wslog"
 )
 
 func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration, verbose bool) error {
@@ -64,12 +63,7 @@ func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration,
 	}
 	//给外部调用
 	{
-		api.POST("wslog/hook-api", internal.JwtMiddlewareWslog, internal.WsLogHookApi(hub))
-		api.GET("wslog/hook", internal.MwUserAdmin, internal.WslogHookAll)
-		api.POST("wslog/hook", internal.MwUserAdmin, internal.WslogHookCreate)
-		api.PATCH("wslog/hook", internal.MwUserAdmin, internal.WslogHookUpdate)
-		api.DELETE("wslog/hook/:id", internal.MwUserAdmin, internal.WslogHookDelete)
-
+	
 		api.GET("wslog/msg", internal.MwUserAdmin, internal.WslogMsgAll)
 		api.POST("wslog/msg-rm", internal.MwUserAdmin, internal.WslogMsgDelete)
 	}

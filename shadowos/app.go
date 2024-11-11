@@ -2,11 +2,13 @@ package shadowos
 
 import (
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/mojocn/felix/util"
 	"io"
 	"log"
 	"net"
+	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/mojocn/felix/util"
 )
 
 type VlessCmd byte
@@ -212,8 +214,14 @@ func (ps *ProxySession) doProxy(socks net.Conn) {
 			}
 		}
 	}()
+	tk := time.NewTicker(time.Second*5)
+	defer tk.Stop()
 	for {
 		select {
+		case <-tk.C:
+			ps.ws.SetWriteDeadline(time.Now().Add(time.Second * 5))
+			ps.ws.SetReadDeadline(time.Now().Add(time.Second * 5))
+			ps.ws.WriteMessage(websocket.PingMessage, nil)
 		case <-ps.ch:
 			return
 		default:
@@ -226,27 +234,7 @@ func (ps *ProxySession) doProxy(socks net.Conn) {
 	}
 
 }
-func (ps *ProxySession) doProxy2(socks net.Conn) {
-	ws2sCh, s2wsCh := make(chan struct{}, 1), make(chan struct{}, 1)
-	s2wsCh <- struct{}{}
-	for {
-		select {
-		case <-ws2sCh:
-			flag := ps.ws2socks(socks)
-			s2wsCh <- struct{}{}
-			if flag {
-				return
-			}
-		case <-s2wsCh:
-			flag := ps.socks2ws(socks)
-			ws2sCh <- struct{}{}
-			if flag {
-				return
-			}
-		}
-	}
 
-}
 
 func (ps *ProxySession) ws2socks(socks net.Conn) (isExit bool) {
 	messageType, data, err := ps.ws.ReadMessage()
