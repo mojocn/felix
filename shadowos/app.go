@@ -142,7 +142,6 @@ func handshake(conn net.Conn, uuidS string) (connData []byte, err error) {
 }
 
 func (ss *ShadowosApp) handleConnection(conn net.Conn) {
-	defer log.Print("request done -->>")
 	defer conn.Close()
 	connBytes, err := handshake(conn, ss.UUID)
 	if err != nil {
@@ -202,9 +201,7 @@ func (ps ProxySession) Close() error {
 
 func (ps *ProxySession) doProxy(socks net.Conn) {
 	go func() {
-		// tk := time.NewTicker(time.Second * 5)
 		defer func() {
-			// tk.Stop()
 			ps.ch <- struct{}{}
 		}()
 		for {
@@ -242,43 +239,36 @@ func (ps *ProxySession) doProxy(socks net.Conn) {
 
 	go func() {
 		defer func() {
-			// tk.Stop()
 			ps.ch <- struct{}{}
 		}()
 		for {
-			select {
-
-			default:
-				buf := make([]byte, 1024)
-				n, err := socks.Read(buf)
-				if n > 0 {
-					log.Println("socks read N:", n)
-					if len(ps.connData) > 0 {
-						buf = append(ps.connData, buf[:n]...)
-						ps.connData = nil
-					} else {
-						buf = buf[:n]
-					}
-					err = ps.ws.WriteMessage(websocket.BinaryMessage, buf)
-					if err != nil {
-						log.Println("failed to write to websocket", err)
-					}
-
+			buf := make([]byte, 1024)
+			n, err := socks.Read(buf)
+			if n > 0 {
+				log.Println("socks read N:", n)
+				if len(ps.connData) > 0 {
+					buf = append(ps.connData, buf[:n]...)
+					ps.connData = nil
+				} else {
+					buf = buf[:n]
 				}
-				//socks5 EOF
-				if err != io.EOF {
-					continue
-				}
-				if err != net.ErrClosed {
-					log.Print("socks5 closed")
-					return
-				}
-
+				err = ps.ws.WriteMessage(websocket.BinaryMessage, buf)
 				if err != nil {
-					log.Printf("%T", err)
-					log.Println("failed to read from socks5 to websocket", err)
-					return
+					log.Println("failed to write to websocket", err)
 				}
+			}
+			//socks5 EOF
+			if err != io.EOF {
+				continue
+			}
+			if err != net.ErrClosed {
+				log.Print("socks5 closed")
+				return
+			}
+			if err != nil {
+				log.Printf("%T", err)
+				log.Println("failed to read from socks5 to websocket", err)
+				return
 			}
 		}
 	}()
