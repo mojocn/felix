@@ -12,9 +12,7 @@ require (
 	github.com/gliderlabs/ssh v0.2.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/iancoleman/strcase v0.0.0-20190422225806-e506e3ef7365
 	github.com/jinzhu/gorm v1.9.5
-	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a
 	github.com/johntdyer/slackrus v0.0.0-20180518184837-f7aae3243a07
 	github.com/libragen/felix v0.0.0-20241108105119-ee85e49dac05
 	github.com/mattn/go-isatty v0.0.7
@@ -41,7 +39,9 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/iancoleman/strcase v0.0.0-20190422225806-e506e3ef7365 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a // indirect
 	github.com/johntdyer/slack-go v0.0.0-20180213144715-95fac1160b22 // indirect
 	github.com/json-iterator/go v1.1.6 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect

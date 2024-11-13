@@ -2,12 +2,11 @@ package shadowos
 
 import (
 	"fmt"
+	"github.com/gorilla/websocket"
+	"github.com/libragen/felix/util"
 	"io"
 	"log"
 	"net"
-
-	"github.com/gorilla/websocket"
-	"github.com/mojocn/felix/util"
 )
 
 type VlessCmd byte
@@ -48,12 +47,11 @@ func (ss *ShadowosApp) Run() {
 			log.Printf("Failed to accept connection: %v", err)
 			continue
 		}
-		log.Println("new request:-->")
 		go ss.handleConnection(conn)
 	}
 }
 
-func handshake(conn net.Conn, uuidS string) (connData []byte, err error) {
+func socks5packet(conn net.Conn, uuidS string) (connData []byte, err error) {
 	uuidBytes, err := util.UUID2bytes(uuidS)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse UUID: %w", err)
@@ -143,7 +141,8 @@ func handshake(conn net.Conn, uuidS string) (connData []byte, err error) {
 
 func (ss *ShadowosApp) handleConnection(conn net.Conn) {
 	defer conn.Close()
-	connBytes, err := handshake(conn, ss.UUID)
+
+	connBytes, err := socks5packet(conn, ss.UUID)
 	if err != nil {
 		log.Printf("failed to parse SOCKS5 request: %v", err)
 		return
@@ -151,7 +150,7 @@ func (ss *ShadowosApp) handleConnection(conn net.Conn) {
 	// Read the version and number of authentication methods
 
 	// Connect to the target server
-	session, err := NewProxySession(ss.AddrWs, connBytes)
+	ws, err := NewWebsocketConn(ss.AddrWs)
 	if err != nil {
 		log.Printf("failed to connect to target: %v", err)
 		conn.Write([]byte{SOCKS5VERSION, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
@@ -159,119 +158,108 @@ func (ss *ShadowosApp) handleConnection(conn net.Conn) {
 	} else { // Send success response
 		conn.Write([]byte{SOCKS5VERSION, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 	}
-	defer session.Close()
-
-	session.doProxy(conn)
+	defer ws.Close()
+	// Relay data between client and target server
+	pipeWebsocketSocks5(ws, conn, connBytes)
 }
 
-type ProxySession struct {
-	ws          *websocket.Conn
-	connData    []byte
-	isFirstData bool
-	ch          chan struct{}
-	nextRead    chan struct{}
+func pipeWebsocketSocks5(ws *WebsocketConn, s5 net.Conn, firstData []byte) {
+	go func() { // s5 -> ws
+		buf := make([]byte, 1024)
+		for {
+
+			n, err := s5.Read(buf)
+			if err == io.EOF {
+				log.Println("EOF from socks5")
+				continue
+			}
+			if err != nil {
+				log.Printf("read from socks5 error %T", err)
+				log.Println("read from socks5 error", err)
+				continue
+			}
+			log.Println("read from socks5", n)
+			data := buf[:n]
+			if len(firstData) > 0 {
+				log.Println("send version header only once")
+				data = append(firstData, buf[:n]...)
+				firstData = nil
+			}
+			_, err = ws.Write(data)
+			if err != nil {
+				log.Println("write error", err)
+				return
+			}
+
+		}
+	}()
+	isFirstData := true
+	for {
+		buf := make([]byte, 1024)
+		n, err := ws.Read(buf)
+		if err == io.EOF {
+			log.Println("EOF from ws")
+			continue
+		}
+		if err != nil {
+			log.Printf("read from ws -> socks5 error %T", err)
+			log.Println("read from ws -> socks5 error", err)
+			continue
+		}
+		fromByteIndex := 0
+		// skip the first data
+		if isFirstData && n >= 2 {
+			extraN := buf[1]
+			isFirstData = false
+			fromByteIndex = 2 + int(extraN)
+		}
+		_, err = s5.Write(buf[fromByteIndex:n])
+		if err != nil {
+			log.Println(" ws -> socks5 error", err)
+			return
+		}
+
+	}
+
 }
 
-func NewProxySession(url string, initialData []byte) (*ProxySession, error) {
+type WebsocketConn struct {
+	c *websocket.Conn
+}
+
+func NewWebsocketConn(url string) (*WebsocketConn, error) {
 	c, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to WebSocket server: %w", err)
 	}
-
-	return &ProxySession{
-		ws:          c,
-		connData:    initialData,
-		isFirstData: true,
-		ch:          make(chan struct{}, 1),
-		nextRead:    make(chan struct{}, 1),
-	}, nil
+	return &WebsocketConn{c: c}, nil
 }
 
-func (ps ProxySession) Close() error {
-	log.Println("websocket close message sent")
-
-	err := ps.ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+func (w WebsocketConn) Close() error {
+	err := w.c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	if err != nil {
 		log.Println("failed to send close message", err)
 		return err
 	}
-	return ps.ws.Close()
-	// return nil
+	return w.c.Close()
 }
 
-func (ps *ProxySession) doProxy(socks net.Conn) {
-	go func() {
-		defer func() {
-			ps.ch <- struct{}{}
-		}()
-		for {
-			select {
-			case <-ps.ch:
-				return
-			default:
-				messageType, data, err := ps.ws.ReadMessage()
-				log.Println("ws2socks ->", messageType, data, err)
-				if err != nil {
-					log.Println("failed to read from websocket to socks5", err)
-				}
-				if len(data) > 0 && messageType == websocket.BinaryMessage {
-					if ps.isFirstData && len(data) > 1 {
-						ps.isFirstData = false
-						extraN := int(data[1]) + 2
-						data = data[extraN:]
-					}
-					nn := 0
-					nn, err = socks.Write(data)
-					if err != nil {
-						log.Println(err)
-					}
-					log.Println(nn)
-				}
-				if err != nil {
-					log.Printf("%T", err)
-					log.Println("messageType", messageType)
-					log.Println("failed to read from websocket to socks5", err)
-					return
-				}
-			}
-		}
-	}()
+func (w WebsocketConn) Write(bytes []byte) (int, error) {
+	err := w.c.WriteMessage(websocket.BinaryMessage, bytes)
+	if err != nil {
+		return 0, err
+	}
+	return len(bytes), nil
+}
 
-	go func() {
-		defer func() {
-			ps.ch <- struct{}{}
-		}()
-		for {
-			buf := make([]byte, 1024)
-			n, err := socks.Read(buf)
-			if n > 0 {
-				log.Println("socks read N:", n)
-				if len(ps.connData) > 0 {
-					buf = append(ps.connData, buf[:n]...)
-					ps.connData = nil
-				} else {
-					buf = buf[:n]
-				}
-				err = ps.ws.WriteMessage(websocket.BinaryMessage, buf)
-				if err != nil {
-					log.Println("failed to write to websocket", err)
-				}
-			}
-			//socks5 EOF
-			if err != io.EOF {
-				continue
-			}
-			if err != net.ErrClosed {
-				log.Print("socks5 closed")
-				return
-			}
-			if err != nil {
-				log.Printf("%T", err)
-				log.Println("failed to read from socks5 to websocket", err)
-				return
-			}
-		}
-	}()
-	<-ps.ch
-	log.Print("doProxy done")
+func (w WebsocketConn) Read(p []byte) (n int, err error) {
+	messageType, bytes, err := w.c.ReadMessage()
+	if err != nil {
+		return 0, err
+	}
+	if messageType != websocket.BinaryMessage {
+		return 0, fmt.Errorf("unexpected message type: %d", messageType)
+	}
+	n = copy(p, bytes)
+	return n, nil
 }
