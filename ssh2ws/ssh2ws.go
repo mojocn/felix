@@ -52,35 +52,6 @@ func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration,
 	api.POST("admin-login", internal.LoginAdmin) //管理后台登陆
 	api.GET("meta", internal.Meta)
 
-	//terminal log
-	hub := wslog.NewHub()
-	go hub.Run()
-
-	{
-		//websocket
-		r.GET("ws/hook", internal.MwUserAdmin, internal.Wslog(hub))
-		r.GET("ws/ssh/:id", internal.MwUserAdmin, internal.WsSsh)
-	}
-	//给外部调用
-	{
-	
-		api.GET("wslog/msg", internal.MwUserAdmin, internal.WslogMsgAll)
-		api.POST("wslog/msg-rm", internal.MwUserAdmin, internal.WslogMsgDelete)
-	}
-
-	//评论
-	{
-		api.GET("comment", internal.CommentAll)
-		api.GET("comment/:id/:action", internal.MwUserComment, internal.CommentAction)
-		api.POST("comment", internal.MwUserComment, internal.CommentCreate)
-		api.DELETE("comment/:id", internal.MwUserAdmin, internal.CommentDelete)
-	}
-	{
-		api.GET("hacknews", internal.MwUserAdmin, internal.HackNewAll)
-		api.PATCH("hacknews", internal.HackNewUpdate)
-		api.POST("hacknews-rm", internal.HackNewRm)
-	}
-
 	authG := api.Use(internal.MwUserAdmin)
 	{
 
@@ -100,17 +71,8 @@ func RunSsh2ws(bindAddress, user, password, secret string, expire time.Duration,
 		authG.GET("sftp/:id/mkdir", internal.SftpMkdir)
 		authG.POST("sftp/:id/up", internal.SftpUp)
 
-		authG.POST("ginbro/gen", internal.GinbroGen)
-		authG.POST("ginbro/db", internal.GinbroDb)
-		authG.GET("ginbro/dl", internal.GinbroDownload)
-
-		authG.GET("ssh-log", internal.SshLogAll)
-		authG.DELETE("ssh-log/:id", internal.SshLogDelete)
-		authG.PATCH("ssh-log", internal.SshLogUpdate)
-
 		authG.GET("user", internal.UserAll)
 		authG.POST("user", internal.RegisterCommenter)
-		//api.GET("user/:id", internal.SshAll)
 		authG.DELETE("user/:id", internal.UserDelete)
 		authG.PATCH("user", internal.UserUpdate)
 

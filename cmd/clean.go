@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/mojocn/felix/ssh2ws"
 	"log"
 
 	"github.com/libragen/felix/model"
@@ -13,6 +14,7 @@ var cleanCmd = &cobra.Command{
 	Short: "purge all felix configuration",
 	Long:  `purge all felix info by destroying SQLite database file`,
 	Run: func(cmd *cobra.Command, args []string) {
+		ssh2ws.RunSsh2ws("", "", "", "", 0, false)
 		if err := model.FlushSqliteDb(); err != nil {
 			log.Fatal(err)
 		}
