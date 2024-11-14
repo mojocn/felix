@@ -12,6 +12,7 @@ var upGrader = websocket.Upgrader{
 	},
 }
 
+// Ws it is to bad vercel golang runtime is not support websocket for it is aws lambda go runtime
 func Ws(w http.ResponseWriter, r *http.Request) {
 	conn, err := upGrader.Upgrade(w, r, nil)
 	if err != nil {
