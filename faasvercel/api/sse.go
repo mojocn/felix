@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Sse it is a pity that Vercel Function is not support SSE
 func Sse(w http.ResponseWriter, r *http.Request) {
 	// Set headers for SSE
 	w.Header().Set("Content-Type", "text/event-stream")
