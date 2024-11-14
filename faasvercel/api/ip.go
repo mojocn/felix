@@ -6,14 +6,6 @@ import (
 	"net/http"
 )
 
-func Demo(w http.ResponseWriter, r *http.Request) {
-	// hello world
-
-	// response json hello world
-	w.Write([]byte("hello world1"))
-
-}
-
 func MyInfo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
