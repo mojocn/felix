@@ -4,7 +4,7 @@ import (
 	"github.com/mojocn/felix/ssh2ws"
 	"log"
 
-	"github.com/libragen/felix/model"
+	"github.com/mojocn/felix/model"
 	"github.com/spf13/cobra"
 )
 

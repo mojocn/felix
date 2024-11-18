@@ -10,7 +10,7 @@ import (
 )
 
 var AppSecret = ""
-var AppIss = "github.com/libragen/felix"
+var AppIss = "github.com/mojocn/felix"
 var ExpireTime = time.Hour * 24
 
 type userStdClaims struct {
@@ -55,7 +55,7 @@ func jwtGenerateToken(m *User, d time.Duration) (string, error) {
 	return tokenString, err
 }
 
-//JwtParseUser
+// JwtParseUser
 func JwtParseUser(tokenString string) (*User, error) {
 	if tokenString == "" {
 		return nil, errors.New("no token is found in Authorization Bearer")

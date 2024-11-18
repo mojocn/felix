@@ -3,7 +3,7 @@ package shadowos
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/libragen/felix/util"
+	"github.com/mojocn/felix/util"
 	"io"
 	"log"
 	"net"
@@ -160,10 +160,67 @@ func (ss *ShadowosApp) handleConnection(conn net.Conn) {
 	}
 	defer ws.Close()
 	// Relay data between client and target server
-	pipeWebsocketSocks5(ws, conn, connBytes)
+	pipeWebsocketSocks5www(ws, conn, connBytes)
 }
 
 func pipeWebsocketSocks5(ws *WebsocketConn, s5 net.Conn, firstData []byte) {
+
+	isFirstData := true
+	for {
+		buf := make([]byte, 1024)
+
+		n, err := s5.Read(buf)
+		if err == io.EOF {
+			log.Println("EOF from socks5")
+			continue
+		}
+		if err != nil {
+			log.Printf("read from socks5 error %T", err)
+			log.Println("read from socks5 error", err)
+			continue
+		}
+		log.Println("read from socks5", n)
+		data := buf[:n]
+		if len(firstData) > 0 {
+			log.Println("send version header only once")
+			data = append(firstData, buf[:n]...)
+			firstData = nil
+		}
+		_, err = ws.Write(data)
+		if err != nil {
+			log.Println("write error", err)
+			return
+		}
+
+		// skip the first data
+		n, err = ws.Read(buf)
+		if err == io.EOF {
+			log.Println("EOF from ws")
+			continue
+		}
+		if err != nil {
+			log.Printf("read from ws -> socks5 error %T", err)
+			log.Println("read from ws -> socks5 error", err)
+			continue
+		}
+		fromByteIndex := 0
+		// skip the first data
+		if isFirstData && n >= 2 {
+			extraN := buf[1]
+			isFirstData = false
+			fromByteIndex = 2 + int(extraN)
+		}
+		_, err = s5.Write(buf[fromByteIndex:n])
+		if err != nil {
+			log.Println(" ws -> socks5 error", err)
+			return
+		}
+
+	}
+
+}
+
+func pipeWebsocketSocks5www(ws *WebsocketConn, s5 net.Conn, firstData []byte) {
 	go func() { // s5 -> ws
 		buf := make([]byte, 1024)
 		for {

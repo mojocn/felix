@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/libragen/felix/util"
+	"github.com/mojocn/felix/util"
 )
 
 type WslogHook struct {
@@ -30,7 +30,7 @@ func (m *WslogHook) Create() error {
 	return db.Save(m).Error
 }
 
-//update renew token and other infos
+// update renew token and other infos
 func (m *WslogHook) Update() error {
 	err := m.generateAesToken()
 	if err != nil {

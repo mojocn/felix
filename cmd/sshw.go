@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/libragen/felix/ssh2ws"
+	"github.com/mojocn/felix/ssh2ws"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"log"

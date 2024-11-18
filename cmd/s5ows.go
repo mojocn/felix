@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	url = "wss://demo.libragen.cn/53881505-c10c-464a-8949-e57184a576a9"
+	url = "ws://127.0.0.1:8787/53881505-c10c-464a-8949-e57184a576a9"
 	app = &shadowos.ShadowosApp{
 		AddrWs:     url,
 		AddrSocks5: "127.0.0.1:1080",
@@ -17,8 +17,8 @@ var (
 	}
 )
 
-var s5OverWsCmd = &cobra.Command{
-	Use:   "s5ows",
+var vlessClient = &cobra.Command{
+	Use:   "vless",
 	Short: "socks5 over websocket",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -29,5 +29,5 @@ var s5OverWsCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(s5OverWsCmd)
+	rootCmd.AddCommand(vlessClient)
 }
