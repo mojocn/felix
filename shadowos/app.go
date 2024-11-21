@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -17,6 +18,10 @@ type VlessCmd byte
 type VlessAddrType byte
 
 const (
+	socksVersion    = 0x05
+	cmdUDPAssociate = 0x03
+	replySuccess    = 0x00
+
 	VlessCmdTcp VlessCmd = 0x01
 	VlessCmdUdp VlessCmd = 0x02
 	VlessCmdMux VlessCmd = 0x03
@@ -29,6 +34,10 @@ const (
 	CMD_CONNECT   = 0x01
 	CMD_BIND      = 0x02
 	CMD_UDP_ASSOC = 0x03
+
+	addressTypeIPv4   = 0x01
+	addressTypeDomain = 0x03
+	addressTypeIPv6   = 0x04
 )
 
 type ShadowosApp struct {
@@ -54,7 +63,21 @@ func (ss *ShadowosApp) Run() {
 		go ss.handleConnection(conn)
 	}
 }
+func handleUDPPacket(conn *net.UDPConn, clientAddr *net.UDPAddr, packet []byte) {
+	// Parse UDP packet
+	headerLen := 3 + int(packet[4]) // Assuming SOCKS5 UDP header
+	data := packet[headerLen:]
 
+	targetAddr := packet[3:]
+	log.Printf("Received UDP packet for %v from %v", targetAddr, clientAddr)
+
+	// Forward data (implement logic for forwarding here)
+
+	// Example: Echo back to client
+	if _, err := conn.WriteToUDP(data, clientAddr); err != nil {
+		log.Printf("Failed to send response to %v: %v", clientAddr, err)
+	}
+}
 func socks5packet(conn net.Conn, uuidS string) (connData []byte, err error) {
 	uuidBytes, err := util.UUID2bytes(uuidS)
 	if err != nil {
@@ -101,16 +124,16 @@ func socks5packet(conn net.Conn, uuidS string) (connData []byte, err error) {
 	addrLen := 0
 	// Read the address
 	switch buf[3] {
-	case 0x01: // IPv4
+	case addressTypeIPv4: // IPv4
 		vlessAddrType = VlessAddrTypeIPv4
 		addrLen = net.IPv4len
-	case 0x03: // Domain name
+	case addressTypeDomain: // Domain name
 		vlessAddrType = VlessAddrTypeDomain
 		if _, err := io.ReadFull(conn, buf[:1]); err != nil {
 			return nil, fmt.Errorf("failed to read domain length: %w", err)
 		}
 		addrLen = int(buf[0])
-	case 0x04: // IPv6
+	case addressTypeIPv6: // IPv6
 		vlessAddrType = VlessAddrTypeIPv6
 		addrLen = net.IPv6len
 	default:
@@ -153,63 +176,95 @@ func (ss *ShadowosApp) handleConnection(conn net.Conn) {
 	}
 	// Read the version and number of authentication methods
 
+	if len(connBytes) >= 18 && connBytes[18] == byte(VlessCmdUdp) {
+		udpAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
+		udpConn, err := net.ListenUDP("udp", udpAddr)
+		if err != nil {
+			log.Printf("failed to bind UDP socket: %v", err)
+			return
+		}
+		defer udpConn.Close()
+		boundAddr := udpConn.LocalAddr().(*net.UDPAddr)
+		response := []byte{
+			socksVersion, replySuccess, 0x00, addressTypeIPv4,
+			boundAddr.IP[0], boundAddr.IP[1], boundAddr.IP[2], boundAddr.IP[3],
+			byte(boundAddr.Port >> 8), byte(boundAddr.Port & 0xFF),
+		}
+		conn.Write(response)
+		go func() {
+			for {
+				packet := make([]byte, 65535)
+				n, clientAddr, err := udpConn.ReadFromUDP(packet)
+				if err != nil {
+					log.Printf("UDP read error: %v", err)
+					continue
+				}
+
+				go handleUDPPacket(udpConn, clientAddr, packet[:n])
+			}
+		}()
+		buf := make([]byte, 1)
+		conn.Read(buf) // Block until client closes the connection
+		return
+	}
+
 	// Connect to the target server
 	ws, _, err := websocket.DefaultDialer.Dial(ss.AddrWs, nil)
 	if err != nil {
 		log.Printf("failed to connect to target: %v", err)
-		conn.Write([]byte{SOCKS5VERSION, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
+		conn.Write([]byte{socksVersion, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 		return
 	} else { // Send success response
-		conn.Write([]byte{SOCKS5VERSION, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
+		conn.Write([]byte{socksVersion, replySuccess, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 	}
 	defer func() {
-		err = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-		log.Println("send close ws msg", err)
+		ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		log.Println("send close ws msg")
 		ws.Close()
 		log.Println("closed ws")
 	}()
 	// Relay data between client and target server
-	pipeWebsocketSocks5(context.Background(), ws, conn, connBytes)
+	ctx, cf := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cf()
+	pipeWebsocketSocks5(ctx, ws, conn, connBytes)
 }
 
 func pipeWebsocketSocks5(ctx context.Context, ws *websocket.Conn, s5 net.Conn, firstData []byte) {
+	exitWs := make(chan struct{}, 1)
 	ws.SetCloseHandler(func(code int, text string) error {
 		log.Println("ws closed", code, text)
+		exitWs <- struct{}{}
 		return nil
 	})
-	done := make(chan struct{})
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
 	go func() {
 		isFirstData := true
 		defer func() {
-			log.Println("ddd ws -> s5")
-			done <- struct{}{}
+			log.Println("[ddd] ws -> s5")
+			wg.Done()
 		}()
 		for {
 			select {
-			case <-done:
-				log.Println("wss5 done")
+			case <-exitWs:
+				log.Println("exitWs")
 				return
 			case <-ctx.Done():
-				log.Println("done: ws -> s5")
+				log.Println("doneCh: ws -> s5")
 				return
 			default:
-				//ws.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+				ws.SetReadDeadline(time.Now().Add(1 * time.Second))
 				_, data, err := ws.ReadMessage()
 				n := len(data)
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
 					log.Println("EOF from ws")
 					return
 				}
-				var e *net.OpError
-				if errors.As(err, &e) {
-					log.Println("net.OpError", e)
-					return
-				}
 				if err != nil {
 					log.Printf("other ws -> socks5 error %T", err)
 					log.Println("other ws -> socks5 error", err)
-					continue
+					return
 				}
 				fromByteIndex := 0
 				// skip the first data
@@ -230,20 +285,17 @@ func pipeWebsocketSocks5(ctx context.Context, ws *websocket.Conn, s5 net.Conn, f
 	}()
 	go func() { // s5 -> ws
 		defer func() {
-			log.Println("ddd s5 -> ws")
-			done <- struct{}{}
+			log.Println("[ddd] s5 -> ws")
+			wg.Done()
 		}()
 		for {
 			select {
-			case <-done:
-				log.Println("s5ws done")
-				return
 			case <-ctx.Done():
-				log.Println("done: s5 -> ws")
+				log.Println("doneCh: s5 -> ws")
 				return
 			default:
 				buf := make([]byte, 8<<10)
-				//s5.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+				s5.SetReadDeadline(time.Now().Add(1 * time.Second))
 				n, err := s5.Read(buf)
 				if errors.Is(err, os.ErrDeadlineExceeded) {
 					continue
@@ -252,6 +304,12 @@ func pipeWebsocketSocks5(ctx context.Context, ws *websocket.Conn, s5 net.Conn, f
 					log.Println("EOF from socks5")
 					return
 				}
+				var opErr *net.OpError
+				if err != nil && errors.As(err, &opErr) {
+					log.Println("opErr", opErr)
+					return
+				}
+
 				if err != nil {
 					log.Printf("read from socks5 error %T", err)
 					log.Println("read from socks5 error", err)
@@ -272,7 +330,7 @@ func pipeWebsocketSocks5(ctx context.Context, ws *websocket.Conn, s5 net.Conn, f
 			}
 		}
 	}()
-	<-done
-	log.Println("2 done")
+	wg.Wait()
+	log.Println("2 doneCh")
 
 }
