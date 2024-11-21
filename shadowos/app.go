@@ -1,12 +1,16 @@
 package shadowos
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/mojocn/felix/util"
 	"io"
 	"log"
 	"net"
+	"os"
+	"time"
 )
 
 type VlessCmd byte
@@ -150,7 +154,7 @@ func (ss *ShadowosApp) handleConnection(conn net.Conn) {
 	// Read the version and number of authentication methods
 
 	// Connect to the target server
-	ws, err := NewWebsocketConn(ss.AddrWs)
+	ws, _, err := websocket.DefaultDialer.Dial(ss.AddrWs, nil)
 	if err != nil {
 		log.Printf("failed to connect to target: %v", err)
 		conn.Write([]byte{SOCKS5VERSION, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
@@ -158,165 +162,117 @@ func (ss *ShadowosApp) handleConnection(conn net.Conn) {
 	} else { // Send success response
 		conn.Write([]byte{SOCKS5VERSION, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 	}
-	defer ws.Close()
+	defer func() {
+		err = ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		log.Println("send close ws msg", err)
+		ws.Close()
+		log.Println("closed ws")
+	}()
 	// Relay data between client and target server
-	pipeWebsocketSocks5www(ws, conn, connBytes)
+	pipeWebsocketSocks5(context.Background(), ws, conn, connBytes)
 }
 
-func pipeWebsocketSocks5(ws *WebsocketConn, s5 net.Conn, firstData []byte) {
+func pipeWebsocketSocks5(ctx context.Context, ws *websocket.Conn, s5 net.Conn, firstData []byte) {
+	ws.SetCloseHandler(func(code int, text string) error {
+		log.Println("ws closed", code, text)
+		return nil
+	})
+	done := make(chan struct{})
 
-	isFirstData := true
-	for {
-		buf := make([]byte, 1024)
-
-		n, err := s5.Read(buf)
-		if err == io.EOF {
-			log.Println("EOF from socks5")
-			continue
-		}
-		if err != nil {
-			log.Printf("read from socks5 error %T", err)
-			log.Println("read from socks5 error", err)
-			continue
-		}
-		log.Println("read from socks5", n)
-		data := buf[:n]
-		if len(firstData) > 0 {
-			log.Println("send version header only once")
-			data = append(firstData, buf[:n]...)
-			firstData = nil
-		}
-		_, err = ws.Write(data)
-		if err != nil {
-			log.Println("write error", err)
-			return
-		}
-
-		// skip the first data
-		n, err = ws.Read(buf)
-		if err == io.EOF {
-			log.Println("EOF from ws")
-			continue
-		}
-		if err != nil {
-			log.Printf("read from ws -> socks5 error %T", err)
-			log.Println("read from ws -> socks5 error", err)
-			continue
-		}
-		fromByteIndex := 0
-		// skip the first data
-		if isFirstData && n >= 2 {
-			extraN := buf[1]
-			isFirstData = false
-			fromByteIndex = 2 + int(extraN)
-		}
-		_, err = s5.Write(buf[fromByteIndex:n])
-		if err != nil {
-			log.Println(" ws -> socks5 error", err)
-			return
-		}
-
-	}
-
-}
-
-func pipeWebsocketSocks5www(ws *WebsocketConn, s5 net.Conn, firstData []byte) {
-	go func() { // s5 -> ws
-		buf := make([]byte, 1024)
+	go func() {
+		isFirstData := true
+		defer func() {
+			log.Println("ddd ws -> s5")
+			done <- struct{}{}
+		}()
 		for {
-
-			n, err := s5.Read(buf)
-			if err == io.EOF {
-				log.Println("EOF from socks5")
-				continue
-			}
-			if err != nil {
-				log.Printf("read from socks5 error %T", err)
-				log.Println("read from socks5 error", err)
-				continue
-			}
-			log.Println("read from socks5", n)
-			data := buf[:n]
-			if len(firstData) > 0 {
-				log.Println("send version header only once")
-				data = append(firstData, buf[:n]...)
-				firstData = nil
-			}
-			_, err = ws.Write(data)
-			if err != nil {
-				log.Println("write error", err)
+			select {
+			case <-done:
+				log.Println("wss5 done")
 				return
+			case <-ctx.Done():
+				log.Println("done: ws -> s5")
+				return
+			default:
+				//ws.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+				_, data, err := ws.ReadMessage()
+				n := len(data)
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
+					log.Println("EOF from ws")
+					return
+				}
+				var e *net.OpError
+				if errors.As(err, &e) {
+					log.Println("net.OpError", e)
+					return
+				}
+				if err != nil {
+					log.Printf("other ws -> socks5 error %T", err)
+					log.Println("other ws -> socks5 error", err)
+					continue
+				}
+				fromByteIndex := 0
+				// skip the first data
+				if isFirstData && n >= 2 {
+					extraN := data[1]
+					isFirstData = false
+					fromByteIndex = 2 + int(extraN)
+				}
+				log.Println("write back socks5", n)
+				s5.SetWriteDeadline(time.Now().Add(10 * time.Millisecond))
+				_, err = s5.Write(data[fromByteIndex:n])
+				if err != nil {
+					log.Println(" ws -> socks5 error", err)
+					return
+				}
 			}
-
 		}
 	}()
-	isFirstData := true
-	for {
-		buf := make([]byte, 1024)
-		n, err := ws.Read(buf)
-		if err == io.EOF {
-			log.Println("EOF from ws")
-			continue
+	go func() { // s5 -> ws
+		defer func() {
+			log.Println("ddd s5 -> ws")
+			done <- struct{}{}
+		}()
+		for {
+			select {
+			case <-done:
+				log.Println("s5ws done")
+				return
+			case <-ctx.Done():
+				log.Println("done: s5 -> ws")
+				return
+			default:
+				buf := make([]byte, 8<<10)
+				//s5.SetReadDeadline(time.Now().Add(10 * time.Millisecond))
+				n, err := s5.Read(buf)
+				if errors.Is(err, os.ErrDeadlineExceeded) {
+					continue
+				}
+				if errors.Is(err, io.EOF) {
+					log.Println("EOF from socks5")
+					return
+				}
+				if err != nil {
+					log.Printf("read from socks5 error %T", err)
+					log.Println("read from socks5 error", err)
+					continue
+				}
+				log.Println("read from socks5", n)
+				data := buf[:n]
+				if len(firstData) > 0 {
+					log.Println("send version header only once")
+					data = append(firstData, buf[:n]...)
+					firstData = nil
+				}
+				err = ws.WriteMessage(websocket.BinaryMessage, data)
+				if err != nil {
+					log.Println("write error", err)
+					return
+				}
+			}
 		}
-		if err != nil {
-			log.Printf("read from ws -> socks5 error %T", err)
-			log.Println("read from ws -> socks5 error", err)
-			continue
-		}
-		fromByteIndex := 0
-		// skip the first data
-		if isFirstData && n >= 2 {
-			extraN := buf[1]
-			isFirstData = false
-			fromByteIndex = 2 + int(extraN)
-		}
-		_, err = s5.Write(buf[fromByteIndex:n])
-		if err != nil {
-			log.Println(" ws -> socks5 error", err)
-			return
-		}
+	}()
+	<-done
+	log.Println("2 done")
 
-	}
-
-}
-
-type WebsocketConn struct {
-	c *websocket.Conn
-}
-
-func NewWebsocketConn(url string) (*WebsocketConn, error) {
-	c, _, err := websocket.DefaultDialer.Dial(url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to WebSocket server: %w", err)
-	}
-	return &WebsocketConn{c: c}, nil
-}
-
-func (w WebsocketConn) Close() error {
-	err := w.c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	if err != nil {
-		log.Println("failed to send close message", err)
-		return err
-	}
-	return w.c.Close()
-}
-
-func (w WebsocketConn) Write(bytes []byte) (int, error) {
-	err := w.c.WriteMessage(websocket.BinaryMessage, bytes)
-	if err != nil {
-		return 0, err
-	}
-	return len(bytes), nil
-}
-
-func (w WebsocketConn) Read(p []byte) (n int, err error) {
-	messageType, bytes, err := w.c.ReadMessage()
-	if err != nil {
-		return 0, err
-	}
-	if messageType != websocket.BinaryMessage {
-		return 0, fmt.Errorf("unexpected message type: %d", messageType)
-	}
-	n = copy(p, bytes)
-	return n, nil
 }
