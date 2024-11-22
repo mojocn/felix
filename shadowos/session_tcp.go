@@ -17,17 +17,14 @@ type SessionTcp struct {
 	req      *Socks5Request
 	s5       net.Conn
 	ws       *websocket.Conn
-	proxyCfg *ProxyCfg
 	wsExitCh chan struct{}
 }
 
-func (st *SessionTcp) connectProxyServer() error {
-	wsAddr := st.proxyCfg.AddrWs
-	ws, _, err := websocket.DefaultDialer.Dial(wsAddr, nil)
+func (st *SessionTcp) proxyServer(proxy *ProxyCfg) error {
+	ws, _, err := websocket.DefaultDialer.Dial(proxy.WsUrl, nil)
 	if err != nil {
-		return fmt.Errorf("failed to connect to remote proxy server: %s ,error:%v", wsAddr, err)
+		return fmt.Errorf("failed to connect to remote proxy server: %s ,error:%v", proxy.WsUrl, err)
 	} // Send success response
-	_, err = st.s5.Write([]byte{socksVersion, socks5ReplySuccess, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 	if err != nil {
 		log.Printf("failed to send response to client: %v", err)
 	}
@@ -37,6 +34,7 @@ func (st *SessionTcp) connectProxyServer() error {
 		return nil
 	})
 	st.ws = ws
+	_, err = st.s5.Write([]byte{socks5Version, socks5ReplySuccess, socks5ReplyReserved, 0x01, 0, 0, 0, 0, 0, 0})
 	return nil
 }
 
@@ -56,10 +54,10 @@ func (st *SessionTcp) Close() {
 	}
 }
 
-func (st *SessionTcp) pipe(ctx context.Context) {
+func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 	ws := st.ws
 	s5 := st.s5
-	firstData, err := st.req.vlessHeaderTcp(st.proxyCfg.UUID)
+	firstData, err := st.req.vlessHeaderTcp(uid)
 	if err != nil {
 		log.Println("failed to generate vless header")
 		return
@@ -124,7 +122,7 @@ func (st *SessionTcp) pipe(ctx context.Context) {
 				return
 			default:
 				buf := make([]byte, 8<<10)
-				s5.SetReadDeadline(time.Now().Add(1 * time.Second))
+				s5.SetReadDeadline(time.Now().Add(20 * time.Millisecond))
 				n, err := s5.Read(buf)
 				if errors.Is(err, os.ErrDeadlineExceeded) {
 					continue
@@ -151,6 +149,7 @@ func (st *SessionTcp) pipe(ctx context.Context) {
 					data = append(firstData, buf[:n]...)
 					firstData = nil
 				}
+				ws.SetWriteDeadline(time.Now().Add(1 * time.Second))
 				err = ws.WriteMessage(websocket.BinaryMessage, data)
 				if err != nil {
 					log.Println("write error", err)

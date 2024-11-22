@@ -1,6 +1,7 @@
 package shadowos
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -14,7 +15,7 @@ type SessionUdp struct {
 	udpConn *net.UDPConn
 }
 
-func (st *SessionUdp) connectProxyServer() error {
+func (st *SessionUdp) proxyServer(cfg *ProxyCfg) error {
 	udpAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
 	udpConn, err := net.ListenUDP("udp4", udpAddr)
 	if err != nil {
@@ -24,13 +25,13 @@ func (st *SessionUdp) connectProxyServer() error {
 
 	boundAddr := udpConn.LocalAddr().(*net.UDPAddr)
 	response := []byte{
-		socksVersion, socks5ReplySuccess, 0x00, socks5AtypeIPv4,
+		socks5Version, socks5ReplySuccess, socks5ReplyReserved, socks5AtypeIPv4,
 		boundAddr.IP[0], boundAddr.IP[1], boundAddr.IP[2], boundAddr.IP[3],
 		byte(boundAddr.Port >> 8), byte(boundAddr.Port & 0xFF),
 	}
 
-	wsAddr := st.proxyCfg.AddrWs
-	ws, _, err := websocket.DefaultDialer.Dial(wsAddr, nil)
+	wsAddr := cfg.WsUrl
+	ws, _, err := websocket.DefaultDialer.Dial(wsAddr, cfg.WsHeader)
 	if err != nil {
 		return fmt.Errorf("failed to connect to remote proxy server: %s ,error:%v", wsAddr, err)
 	}
@@ -71,12 +72,15 @@ func (st *SessionUdp) Close() {
 	}
 }
 
-func (st *SessionUdp) pipe() {
+func (st *SessionUdp) pipe(ctx context.Context, uid [16]byte) {
 	//udp is not working
 	exitCh := make(chan struct{}, 1)
 	go func() {
 		for {
 			select {
+			case <-ctx.Done():
+				exitCh <- struct{}{}
+				return
 			case <-st.wsExitCh:
 				exitCh <- struct{}{}
 				return
@@ -88,7 +92,7 @@ func (st *SessionUdp) pipe() {
 					return
 				}
 				if n > 0 {
-					st.handleUDPPacket(st.udpConn, clientAddr, packet[:n])
+					st.handleUDPPacket(st.udpConn, clientAddr, packet[:n], uid)
 				}
 			}
 		}
@@ -103,7 +107,7 @@ func (st *SessionUdp) pipe() {
 	exitCh <- struct{}{}
 }
 
-func (st *SessionUdp) handleUDPPacket(conn *net.UDPConn, clientAddr *net.UDPAddr, udpPacket []byte) {
+func (st *SessionUdp) handleUDPPacket(conn *net.UDPConn, clientAddr *net.UDPAddr, udpPacket []byte, uid [16]byte) {
 	// Parse UDP udpPacket
 
 	frag := udpPacket[2]
@@ -135,7 +139,7 @@ func (st *SessionUdp) handleUDPPacket(conn *net.UDPConn, clientAddr *net.UDPAddr
 	}
 	st.req.dstPort = udpPacket[dstPortIndex : dstPortIndex+2]
 
-	header, err := st.req.vlessHeaderUdp(st.proxyCfg.UUID)
+	header, err := st.req.vlessHeaderUdp(uid)
 	if err != nil {
 		log.Println("failed to generate vless header")
 		return
