@@ -7,9 +7,9 @@ import (
 	"strconv"
 
 	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	"github.com/mojocn/felix/flx"
 	"github.com/mojocn/felix/model"
-	"github.com/mattn/go-isatty"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -49,7 +49,7 @@ func renderInfoTable(m *model.Machine) {
 		{"Name", m.Name},
 		{"Host", m.Host},
 		{"IP", m.Ip},
-		{"Port", strconv.Itoa(int(m.Port))},
+		{"dstPort", strconv.Itoa(int(m.Port))},
 		{"AuthType", m.Type},
 		{"User", m.User},
 		{"Password", "******"},

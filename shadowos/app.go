@@ -2,58 +2,27 @@ package shadowos
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/mojocn/felix/util"
 	"io"
 	"log"
 	"net"
-	"os"
-	"sync"
 	"time"
 )
 
-type VlessCmd byte
-type VlessAddrType byte
-
-const (
-	socksVersion    = 0x05
-	cmdUDPAssociate = 0x03
-	replySuccess    = 0x00
-
-	VlessCmdTcp VlessCmd = 0x01
-	VlessCmdUdp VlessCmd = 0x02
-	VlessCmdMux VlessCmd = 0x03
-
-	VlessAddrTypeIPv4   VlessAddrType = 0x01
-	VlessAddrTypeDomain VlessAddrType = 0x02
-	VlessAddrTypeIPv6   VlessAddrType = 0x03
-
-	SOCKS5VERSION = 0x05
-	CMD_CONNECT   = 0x01
-	CMD_BIND      = 0x02
-	CMD_UDP_ASSOC = 0x03
-
-	addressTypeIPv4   = 0x01
-	addressTypeDomain = 0x03
-	addressTypeIPv6   = 0x04
-)
-
-type ShadowosApp struct {
+type App struct {
 	AddrWs     string
 	AddrSocks5 string
 	UUID       string
+	Timeout    time.Duration
 }
 
-func (ss *ShadowosApp) Run() {
+func (ss *App) Run() {
 	listener, err := net.Listen("tcp", ss.AddrSocks5)
 	if err != nil {
 		log.Fatalf("Failed to listen on port %s: %v", ss.AddrSocks5, err)
 	}
 	defer listener.Close()
 	log.Println("SOCKS5 server listening on: " + ss.AddrSocks5)
-
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -63,120 +32,156 @@ func (ss *ShadowosApp) Run() {
 		go ss.handleConnection(conn)
 	}
 }
-func handleUDPPacket(conn *net.UDPConn, clientAddr *net.UDPAddr, packet []byte) {
-	// Parse UDP packet
-	headerLen := 3 + int(packet[4]) // Assuming SOCKS5 UDP header
-	data := packet[headerLen:]
 
-	targetAddr := packet[3:]
-	log.Printf("Received UDP packet for %v from %v", targetAddr, clientAddr)
-
-	// Forward data (implement logic for forwarding here)
-
-	// Example: Echo back to client
-	if _, err := conn.WriteToUDP(data, clientAddr); err != nil {
-		log.Printf("Failed to send response to %v: %v", clientAddr, err)
-	}
-}
-func socks5packet(conn net.Conn, uuidS string) (connData []byte, err error) {
-	uuidBytes, err := util.UUID2bytes(uuidS)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse UUID: %w", err)
-	}
+func (ss *App) handshakeNoAuth(conn net.Conn) error {
 	buf := make([]byte, 2)
 	if _, err := io.ReadFull(conn, buf); err != nil {
-		return nil, fmt.Errorf("failed to read version and nmethods: %w", err)
+		return fmt.Errorf("failed to read version and nmethods: %w", err)
 	}
 	if buf[0] != SOCKS5VERSION {
-		return nil, fmt.Errorf("socks5 only. unsupported SOCKS version: %d", buf[0])
+		return fmt.Errorf("socks5 only. unsupported SOCKS version: %d", buf[0])
 	}
 
 	// Read the supported authentication methods
 	nMethods := int(buf[1])
 	nMethodsData := make([]byte, nMethods)
 	if _, err := io.ReadFull(conn, nMethodsData); err != nil {
-		return nil, fmt.Errorf("failed to read methods: %w", err)
+		return fmt.Errorf("failed to read methods: %w", err)
 	}
 
 	// Select no authentication (0x00)
 	if _, err := conn.Write([]byte{SOCKS5VERSION, 0x00}); err != nil {
-		return nil, fmt.Errorf("failed to write method selection: %w", err)
+		return fmt.Errorf("failed to write method selection: %w", err)
 	}
-
-	// Read the request
-	buf = make([]byte, 4)
-	if _, err := io.ReadFull(conn, buf); err != nil {
-		return nil, fmt.Errorf("failed to read request: %w", err)
-	}
-
-	if buf[0] != SOCKS5VERSION {
-		return nil, fmt.Errorf("unsupported SOCKS version: %d", buf[0])
-	}
-	var vlessCmd VlessCmd
-	if buf[1] == CMD_CONNECT {
-		vlessCmd = VlessCmdTcp
-	} else if buf[1] == CMD_UDP_ASSOC {
-		vlessCmd = VlessCmdUdp
-	} else {
-		return nil, fmt.Errorf("unsupported command: %d", buf[1])
-	}
-	var vlessAddrType VlessAddrType
-	addrLen := 0
-	// Read the address
-	switch buf[3] {
-	case addressTypeIPv4: // IPv4
-		vlessAddrType = VlessAddrTypeIPv4
-		addrLen = net.IPv4len
-	case addressTypeDomain: // Domain name
-		vlessAddrType = VlessAddrTypeDomain
-		if _, err := io.ReadFull(conn, buf[:1]); err != nil {
-			return nil, fmt.Errorf("failed to read domain length: %w", err)
-		}
-		addrLen = int(buf[0])
-	case addressTypeIPv6: // IPv6
-		vlessAddrType = VlessAddrTypeIPv6
-		addrLen = net.IPv6len
-	default:
-		return nil, fmt.Errorf("unsupported address type: %d", buf[3])
-	}
-	addrBytes := make([]byte, addrLen)
-	if _, err := io.ReadFull(conn, addrBytes); err != nil {
-		return nil, fmt.Errorf("failed to read address: %w", err)
-	}
-	if vlessAddrType == VlessAddrTypeDomain {
-		addrBytes = append([]byte{byte(addrLen)}, addrBytes...)
-	}
-
-	// Read the port
-	remotePort := make([]byte, 2)
-
-	if _, err = io.ReadFull(conn, remotePort); err != nil {
-		log.Printf("Failed to read port: %v", err)
-		return
-	}
-	// Construct vless packet
-	connData = make([]byte, 0, 1+16+1+1+2+1+len(addrBytes))
-	connData = append(connData, 0x01)                // version
-	connData = append(connData, uuidBytes...)        //16 bytes of UUID
-	connData = append(connData, 0x00)                // additional info length M
-	connData = append(connData, byte(vlessCmd))      //1 byte of command
-	connData = append(connData, remotePort...)       //2 bytes of port
-	connData = append(connData, byte(vlessAddrType)) //1 byte of address type
-	connData = append(connData, addrBytes...)        //n bytes of address
-	return connData, nil
+	return nil
 }
 
-func (ss *ShadowosApp) handleConnection(conn net.Conn) {
-	defer conn.Close()
+type Socks5Request struct {
+	socks5Cmd  byte
+	socks5Atyp byte
+	dstAddr    []byte
+	dstPort    []byte
+}
 
-	connBytes, err := socks5packet(conn, ss.UUID)
+func (s Socks5Request) String() string {
+	return fmt.Sprintf("socks5Cmd: %v, socks5Atyp: %v, dstAddr: %v, dstPort: %v", s.socks5Cmd, s.socks5Atyp, s.dstAddr, s.dstPort)
+}
+func (s Socks5Request) addressBytes() []byte {
+	if s.socks5Atyp == socks5AtypeDomain {
+		return append([]byte{byte(len(s.dstAddr))}, s.dstAddr...)
+	}
+	return s.dstAddr
+}
+
+func (s Socks5Request) vlessHeader(uuid [16]byte) ([]byte, error) {
+	addrBytes := s.addressBytes()
+	//https://xtls.github.io/development/protocols/vless.html
+	headerBytes := make([]byte, 0, 1+16+1+1+2+1+len(addrBytes))
+
+	headerBytes = append(headerBytes, 0x01)       // version
+	headerBytes = append(headerBytes, uuid[:]...) //16 bytes of UUID
+	headerBytes = append(headerBytes, 0x00)       // additional info length M
+
+	//1 byte of command
+	if s.socks5Cmd == socks5CmdUdpAssoc {
+		headerBytes = append(headerBytes, byte(vlessCmdUdp))
+	} else if s.socks5Cmd == socks5CmdConnect {
+		headerBytes = append(headerBytes, byte(vlessCmdTcp))
+	} else {
+		return nil, fmt.Errorf("unsupported command: %d", s.socks5Cmd)
+	}
+
+	headerBytes = append(headerBytes, s.dstPort...) //2 bytes of port
+
+	//1 byte of address type
+	if s.socks5Atyp == socks5AtypeIPv4 {
+		headerBytes = append(headerBytes, byte(vlessAtypeIPv4))
+	} else if s.socks5Atyp == socks5AtypeIPv6 {
+		headerBytes = append(headerBytes, byte(vlessAtypeIPv6))
+	} else if s.socks5Atyp == socks5AtypeDomain {
+		headerBytes = append(headerBytes, byte(vlessAtypeDomain))
+	} else {
+		return nil, fmt.Errorf("unsupported address type: %d", s.socks5Atyp)
+	}
+
+	headerBytes = append(headerBytes, addrBytes...) //n bytes of address
+	return headerBytes, nil
+}
+
+func (*App) requestInfo(conn net.Conn) (*Socks5Request, error) {
+	buf := make([]byte, 8<<10)
+	n, err := conn.Read(buf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read request: %w", err)
+	}
+	data := buf[:n]
+	if len(data) < 4 {
+		return nil, fmt.Errorf("request too short")
+	}
+	if data[0] != socks5Ver {
+		return nil, fmt.Errorf("unsupported SOCKS version: %d", data[0])
+	}
+	info := new(Socks5Request)
+	if data[1] == socks5CmdConnect {
+		info.socks5Cmd = socks5CmdConnect
+	} else if data[1] == socks5CmdUdpAssoc {
+		info.socks5Cmd = socks5CmdUdpAssoc
+	} else {
+		//BIND is not supported
+		return nil, fmt.Errorf("unsupported command: %d", data[1])
+	}
+	if data[2] != 0x00 {
+		return nil, fmt.Errorf("RSV must be 0x00")
+	}
+	if data[3] == socks5AtypeIPv4 {
+		if len(data) < 10 {
+			return nil, fmt.Errorf("request too short for atyp IPv4")
+		}
+		info.socks5Atyp = socks5AtypeIPv4
+		info.dstAddr = data[4:8]
+		info.dstPort = data[8:10]
+	} else if data[3] == socks5AtypeDomain {
+		if len(data) < 5 {
+			return nil, fmt.Errorf("request too short for atyp Domain")
+		}
+		addrLen := int(data[4])
+		info.socks5Atyp = socks5AtypeDomain
+		info.dstAddr = data[5 : 5+addrLen]
+		info.dstPort = data[5+addrLen : 5+addrLen+2]
+	} else if data[3] == socks5AtypeIPv6 {
+		if len(data) < 22 {
+			return nil, fmt.Errorf("request too short for atyp IPv6")
+		}
+		info.socks5Atyp = socks5AtypeIPv6
+		info.dstAddr = data[4:20]
+		info.dstPort = data[20:22]
+	} else {
+		return nil, fmt.Errorf("unsupported address type: %d", data[3])
+	}
+	return info, nil
+}
+
+type ProxyCfg struct {
+	AddrWs string
+	UUID   [16]byte
+}
+
+func (ss *App) handleConnection(conn net.Conn) {
+	defer conn.Close()
+	ctx, cf := context.WithTimeout(context.Background(), ss.Timeout)
+	defer cf()
+
+	err := ss.handshakeNoAuth(conn)
+	if err != nil {
+		log.Printf("failed to shake hand: %v", err)
+		return
+	}
+	req, err := ss.requestInfo(conn)
 	if err != nil {
 		log.Printf("failed to parse SOCKS5 request: %v", err)
 		return
 	}
-	// Read the version and number of authentication methods
-
-	if len(connBytes) >= 18 && connBytes[18] == byte(VlessCmdUdp) {
+	if req.socks5Cmd == socks5CmdUdpAssoc {
 		udpAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
 		udpConn, err := net.ListenUDP("udp", udpAddr)
 		if err != nil {
@@ -186,7 +191,7 @@ func (ss *ShadowosApp) handleConnection(conn net.Conn) {
 		defer udpConn.Close()
 		boundAddr := udpConn.LocalAddr().(*net.UDPAddr)
 		response := []byte{
-			socksVersion, replySuccess, 0x00, addressTypeIPv4,
+			socksVersion, socks5ReplySuccess, 0x00, socks5AtypeIPv4,
 			boundAddr.IP[0], boundAddr.IP[1], boundAddr.IP[2], boundAddr.IP[3],
 			byte(boundAddr.Port >> 8), byte(boundAddr.Port & 0xFF),
 		}
@@ -206,131 +211,24 @@ func (ss *ShadowosApp) handleConnection(conn net.Conn) {
 		buf := make([]byte, 1)
 		conn.Read(buf) // Block until client closes the connection
 		return
-	}
 
-	// Connect to the target server
-	ws, _, err := websocket.DefaultDialer.Dial(ss.AddrWs, nil)
-	if err != nil {
-		log.Printf("failed to connect to target: %v", err)
-		conn.Write([]byte{socksVersion, 0x01, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
+	} else if req.socks5Cmd == socks5CmdConnect { //tcp
+		session := &SessionTcp{
+			req:      req,
+			s5:       conn,
+			proxyCfg: &ProxyCfg{AddrWs: ss.AddrWs}, //todo config dynamic
+		}
+		err := session.connectProxyServer()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		defer session.Close()
+		session.pipe(ctx)
+
+	} else {
+		log.Printf("unsupported command: %d", req.socks5Cmd)
 		return
-	} else { // Send success response
-		conn.Write([]byte{socksVersion, replySuccess, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 	}
-	defer func() {
-		ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-		log.Println("send close ws msg")
-		ws.Close()
-		log.Println("closed ws")
-	}()
-	// Relay data between client and target server
-	ctx, cf := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cf()
-	pipeWebsocketSocks5(ctx, ws, conn, connBytes)
-}
-
-func pipeWebsocketSocks5(ctx context.Context, ws *websocket.Conn, s5 net.Conn, firstData []byte) {
-	exitWs := make(chan struct{}, 1)
-	ws.SetCloseHandler(func(code int, text string) error {
-		log.Println("ws closed", code, text)
-		exitWs <- struct{}{}
-		return nil
-	})
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-
-	go func() {
-		isFirstData := true
-		defer func() {
-			log.Println("[ddd] ws -> s5")
-			wg.Done()
-		}()
-		for {
-			select {
-			case <-exitWs:
-				log.Println("exitWs")
-				return
-			case <-ctx.Done():
-				log.Println("doneCh: ws -> s5")
-				return
-			default:
-				ws.SetReadDeadline(time.Now().Add(1 * time.Second))
-				_, data, err := ws.ReadMessage()
-				n := len(data)
-				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
-					log.Println("EOF from ws")
-					return
-				}
-				if err != nil {
-					log.Printf("other ws -> socks5 error %T", err)
-					log.Println("other ws -> socks5 error", err)
-					return
-				}
-				fromByteIndex := 0
-				// skip the first data
-				if isFirstData && n >= 2 {
-					extraN := data[1]
-					isFirstData = false
-					fromByteIndex = 2 + int(extraN)
-				}
-				log.Println("write back socks5", n)
-				s5.SetWriteDeadline(time.Now().Add(10 * time.Millisecond))
-				_, err = s5.Write(data[fromByteIndex:n])
-				if err != nil {
-					log.Println(" ws -> socks5 error", err)
-					return
-				}
-			}
-		}
-	}()
-	go func() { // s5 -> ws
-		defer func() {
-			log.Println("[ddd] s5 -> ws")
-			wg.Done()
-		}()
-		for {
-			select {
-			case <-ctx.Done():
-				log.Println("doneCh: s5 -> ws")
-				return
-			default:
-				buf := make([]byte, 8<<10)
-				s5.SetReadDeadline(time.Now().Add(1 * time.Second))
-				n, err := s5.Read(buf)
-				if errors.Is(err, os.ErrDeadlineExceeded) {
-					continue
-				}
-				if errors.Is(err, io.EOF) {
-					log.Println("EOF from socks5")
-					return
-				}
-				var opErr *net.OpError
-				if err != nil && errors.As(err, &opErr) {
-					log.Println("opErr", opErr)
-					return
-				}
-
-				if err != nil {
-					log.Printf("read from socks5 error %T", err)
-					log.Println("read from socks5 error", err)
-					continue
-				}
-				log.Println("read from socks5", n)
-				data := buf[:n]
-				if len(firstData) > 0 {
-					log.Println("send version header only once")
-					data = append(firstData, buf[:n]...)
-					firstData = nil
-				}
-				err = ws.WriteMessage(websocket.BinaryMessage, data)
-				if err != nil {
-					log.Println("write error", err)
-					return
-				}
-			}
-		}
-	}()
-	wg.Wait()
-	log.Println("2 doneCh")
 
 }

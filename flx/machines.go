@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/mojocn/felix/model"
 	"github.com/mattn/go-isatty"
+	"github.com/mojocn/felix/model"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -17,7 +17,7 @@ const caption = "ssh login by ID: felix ssh 2"
 func AllMachines(search string) {
 	data := fetchMachineToRows(search)
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"ID", "Name", "Addr", "User", "IP", "TYPE", "PORT"})
+	table.SetHeader([]string{"ID", "Name", "dstAddr", "User", "IP", "TYPE", "PORT"})
 	table.SetBorder(true) // Set Border to false
 	table.SetCaption(true, caption)
 	//table.SetAutoMergeCells(true)
