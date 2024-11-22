@@ -1,61 +1,190 @@
 package shadowos
 
 import (
-	"encoding/binary"
+	"errors"
+	"fmt"
 	"github.com/gorilla/websocket"
+	"io"
 	"log"
 	"net"
 )
 
 type SessionUdp struct {
-	req *Socks5Request
-	s5  net.Conn
-	ws  *websocket.Conn
+	SessionTcp
+	udpConn *net.UDPConn
 }
 
-func handleUDPPacket(conn *net.UDPConn, clientAddr *net.UDPAddr, packet []byte) {
-	// Parse UDP packet
-	headerLen := 3 + int(packet[4]) // Assuming SOCKS5 UDP header
-	data := packet[headerLen:]
+func (st *SessionUdp) connectProxyServer() error {
+	udpAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
+	udpConn, err := net.ListenUDP("udp4", udpAddr)
+	if err != nil {
+		return fmt.Errorf("failed to bind UDP socket: %w", err)
+	}
+	st.udpConn = udpConn
 
-	frag := packet[2]
-	atyp := packet[3]
+	boundAddr := udpConn.LocalAddr().(*net.UDPAddr)
+	response := []byte{
+		socksVersion, socks5ReplySuccess, 0x00, socks5AtypeIPv4,
+		boundAddr.IP[0], boundAddr.IP[1], boundAddr.IP[2], boundAddr.IP[3],
+		byte(boundAddr.Port >> 8), byte(boundAddr.Port & 0xFF),
+	}
+
+	wsAddr := st.proxyCfg.AddrWs
+	ws, _, err := websocket.DefaultDialer.Dial(wsAddr, nil)
+	if err != nil {
+		return fmt.Errorf("failed to connect to remote proxy server: %s ,error:%v", wsAddr, err)
+	}
+	// Send success response
+	_, err = st.s5.Write(response)
+	if err != nil {
+		log.Printf("failed to send response to client: %v", err)
+	}
+	ws.SetCloseHandler(func(code int, text string) error {
+		log.Println("ws closed", code, text)
+		st.wsExitCh <- struct{}{}
+		return nil
+	})
+	st.ws = ws
+	return nil
+}
+
+func (st *SessionUdp) Close() {
+	//s5 has already been closed in outside
+	ws := st.ws
+	if ws == nil {
+		return
+	}
+	if st.udpConn != nil {
+		err := st.udpConn.Close()
+		if err != nil {
+			log.Println("close udp conn failed: ", err)
+		}
+	}
+
+	err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	if err != nil {
+		log.Println("send websocket close message failed: ", err)
+	}
+	err = ws.Close()
+	if err != nil {
+		log.Println("close websocket conn failed: ", err)
+	}
+}
+
+func (st *SessionUdp) pipe() {
+	//udp is not working
+	exitCh := make(chan struct{}, 1)
+	go func() {
+		for {
+			select {
+			case <-st.wsExitCh:
+				exitCh <- struct{}{}
+				return
+			default:
+				packet := make([]byte, 65535)
+				n, clientAddr, err := st.udpConn.ReadFromUDP(packet)
+				if err != nil {
+					log.Printf("UDP read error: %v", err)
+					return
+				}
+				if n > 0 {
+					st.handleUDPPacket(st.udpConn, clientAddr, packet[:n])
+				}
+			}
+		}
+	}()
+	buf := make([]byte, 1)
+	n, err := st.s5.Read(buf) // Block until client closes the connection
+	if err != nil && errors.Is(err, io.EOF) {
+		log.Printf("Failed to read from client: %v", err)
+	} else {
+		log.Println("s5 Client closed connection", n)
+	}
+	exitCh <- struct{}{}
+}
+
+func (st *SessionUdp) handleUDPPacket(conn *net.UDPConn, clientAddr *net.UDPAddr, udpPacket []byte) {
+	// Parse UDP udpPacket
+
+	frag := udpPacket[2]
+	atyp := udpPacket[3]
 	if frag != 0x00 {
 		log.Printf("Fragmented UDP packets are not supported")
 		return
 	}
+	st.req.socks5Atyp = atyp
 	if atyp != socks5AtypeIPv4 && atyp != socks5AtypeIPv6 && atyp != socks5AtypeDomain {
 		log.Printf("Unsupported address type: %v", atyp)
 		return
 	}
-	dstAddr := packet[4:]
+
 	dstPortIndex := 4
 	if atyp == socks5AtypeIPv4 {
-		dstAddr = packet[4 : 4+net.IPv4len]
+		st.req.dstAddr = udpPacket[4 : 4+net.IPv4len]
 		dstPortIndex += net.IPv4len
 	} else if atyp == socks5AtypeIPv6 {
-		dstAddr = packet[4 : 4+net.IPv6len]
+		st.req.dstAddr = udpPacket[4 : 4+net.IPv6len]
 		dstPortIndex += net.IPv6len
 	} else if atyp == socks5AtypeDomain {
-		addrLen := int(packet[4])
-		dstAddr = packet[5 : 5+addrLen]
+		addrLen := int(udpPacket[4])
+		st.req.dstAddr = udpPacket[5 : 5+addrLen]
 		dstPortIndex += addrLen + 1
 	} else {
 		log.Printf("Unsupported address type: %v", atyp)
 		return
 	}
-	dstPort := binary.BigEndian.Uint16(packet[dstPortIndex : dstPortIndex+2])
+	st.req.dstPort = udpPacket[dstPortIndex : dstPortIndex+2]
 
-	payload := packet[dstPortIndex+2:]
-	log.Printf("Received UDP packet for %v:%v from %v %v", dstAddr, dstPort, clientAddr, payload)
+	header, err := st.req.vlessHeaderUdp(st.proxyCfg.UUID)
+	if err != nil {
+		log.Println("failed to generate vless header")
+		return
+	}
+	payload := udpPacket[dstPortIndex+2:]
+	payloadN := len(payload)
+	//payloadN to 2 bytes
+	payload = append([]byte{byte(payloadN >> 8), byte(payloadN & 0xFF)}, payload...)
 
-	targetAddr := packet[3:]
-	log.Printf("Received UDP packet for %v from %v", targetAddr, clientAddr)
+	data := append(header, payload...)
+
+	err = st.ws.WriteMessage(websocket.BinaryMessage, data)
+	if err != nil {
+		log.Printf("failed to send UDP udpPacket to remote server: %v", err)
+		return
+	}
+	mt, p, err := st.ws.ReadMessage()
+	if err != nil {
+		log.Printf("failed to read response from remote server: %v  %v", mt, err)
+		return
+	}
+	if len(p) > 2 {
+		fromIdx := p[1] + 2
+		res := p[fromIdx:]
+		socks5UdpHeader := []byte{0x00, 0x00, 0x00}
+		if st.req.socks5Atyp == socks5AtypeIPv4 {
+			socks5UdpHeader = append(socks5UdpHeader, 0x01)
+			socks5UdpHeader = append(socks5UdpHeader, st.req.dstAddr...)
+		} else if st.req.socks5Atyp == socks5AtypeIPv6 {
+			socks5UdpHeader = append(socks5UdpHeader, 0x04)
+			socks5UdpHeader = append(socks5UdpHeader, st.req.dstAddr...)
+		} else if st.req.socks5Atyp == socks5AtypeDomain {
+			socks5UdpHeader = append(socks5UdpHeader, 0x03)
+			socks5UdpHeader = append(socks5UdpHeader, byte(len(st.req.dstAddr)))
+			socks5UdpHeader = append(socks5UdpHeader, st.req.dstAddr...)
+		} else {
+			log.Println("Unsupported address type")
+			return
+		}
+		socks5UdpHeader = append(socks5UdpHeader, st.req.dstPort...)
+
+		res = append(socks5UdpHeader, res...)
+		if _, err := conn.WriteToUDP(res, clientAddr); err != nil {
+			log.Printf("Failed to send response to %v: %v", clientAddr, err)
+		}
+	}
 
 	// Forward data (implement logic for forwarding here)
 
 	// Example: Echo back to client
-	if _, err := conn.WriteToUDP(data, clientAddr); err != nil {
-		log.Printf("Failed to send response to %v: %v", clientAddr, err)
-	}
+
 }

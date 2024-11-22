@@ -56,58 +56,6 @@ func (ss *App) handshakeNoAuth(conn net.Conn) error {
 	return nil
 }
 
-type Socks5Request struct {
-	socks5Cmd  byte
-	socks5Atyp byte
-	dstAddr    []byte
-	dstPort    []byte
-}
-
-func (s Socks5Request) String() string {
-	return fmt.Sprintf("socks5Cmd: %v, socks5Atyp: %v, dstAddr: %v, dstPort: %v", s.socks5Cmd, s.socks5Atyp, s.dstAddr, s.dstPort)
-}
-func (s Socks5Request) addressBytes() []byte {
-	if s.socks5Atyp == socks5AtypeDomain {
-		return append([]byte{byte(len(s.dstAddr))}, s.dstAddr...)
-	}
-	return s.dstAddr
-}
-
-func (s Socks5Request) vlessHeader(uuid [16]byte) ([]byte, error) {
-	addrBytes := s.addressBytes()
-	//https://xtls.github.io/development/protocols/vless.html
-	headerBytes := make([]byte, 0, 1+16+1+1+2+1+len(addrBytes))
-
-	headerBytes = append(headerBytes, 0x01)       // version
-	headerBytes = append(headerBytes, uuid[:]...) //16 bytes of UUID
-	headerBytes = append(headerBytes, 0x00)       // additional info length M
-
-	//1 byte of command
-	if s.socks5Cmd == socks5CmdUdpAssoc {
-		headerBytes = append(headerBytes, byte(vlessCmdUdp))
-	} else if s.socks5Cmd == socks5CmdConnect {
-		headerBytes = append(headerBytes, byte(vlessCmdTcp))
-	} else {
-		return nil, fmt.Errorf("unsupported command: %d", s.socks5Cmd)
-	}
-
-	headerBytes = append(headerBytes, s.dstPort...) //2 bytes of port
-
-	//1 byte of address type
-	if s.socks5Atyp == socks5AtypeIPv4 {
-		headerBytes = append(headerBytes, byte(vlessAtypeIPv4))
-	} else if s.socks5Atyp == socks5AtypeIPv6 {
-		headerBytes = append(headerBytes, byte(vlessAtypeIPv6))
-	} else if s.socks5Atyp == socks5AtypeDomain {
-		headerBytes = append(headerBytes, byte(vlessAtypeDomain))
-	} else {
-		return nil, fmt.Errorf("unsupported address type: %d", s.socks5Atyp)
-	}
-
-	headerBytes = append(headerBytes, addrBytes...) //n bytes of address
-	return headerBytes, nil
-}
-
 func (*App) requestInfo(conn net.Conn) (*Socks5Request, error) {
 	buf := make([]byte, 8<<10)
 	n, err := conn.Read(buf)
@@ -166,6 +114,8 @@ type ProxyCfg struct {
 	UUID   [16]byte
 }
 
+var socks5ReplyFailBytes = []byte{socksVersion, socks5ReplyFail, 0x00, 0x01, 0, 0, 0, 0, 0, 0}
+
 func (ss *App) handleConnection(conn net.Conn) {
 	defer conn.Close()
 	ctx, cf := context.WithTimeout(context.Background(), ss.Timeout)
@@ -182,34 +132,21 @@ func (ss *App) handleConnection(conn net.Conn) {
 		return
 	}
 	if req.socks5Cmd == socks5CmdUdpAssoc {
-		udpAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
-		udpConn, err := net.ListenUDP("udp", udpAddr)
-		if err != nil {
-			log.Printf("failed to bind UDP socket: %v", err)
-			return
+		session := SessionUdp{
+			SessionTcp: SessionTcp{
+				req:      req,
+				s5:       conn,
+				proxyCfg: &ProxyCfg{AddrWs: ss.AddrWs}, //todo config dynamic
+				wsExitCh: make(chan struct{}, 1),
+			},
+			udpConn: nil,
 		}
-		defer udpConn.Close()
-		boundAddr := udpConn.LocalAddr().(*net.UDPAddr)
-		response := []byte{
-			socksVersion, socks5ReplySuccess, 0x00, socks5AtypeIPv4,
-			boundAddr.IP[0], boundAddr.IP[1], boundAddr.IP[2], boundAddr.IP[3],
-			byte(boundAddr.Port >> 8), byte(boundAddr.Port & 0xFF),
+		defer session.Close()
+		err = session.connectProxyServer()
+		if err == nil {
+			session.pipe()
 		}
-		conn.Write(response)
-		go func() {
-			for {
-				packet := make([]byte, 65535)
-				n, clientAddr, err := udpConn.ReadFromUDP(packet)
-				if err != nil {
-					log.Printf("UDP read error: %v", err)
-					continue
-				}
 
-				go handleUDPPacket(udpConn, clientAddr, packet[:n])
-			}
-		}()
-		buf := make([]byte, 1)
-		conn.Read(buf) // Block until client closes the connection
 		return
 
 	} else if req.socks5Cmd == socks5CmdConnect { //tcp
@@ -217,18 +154,19 @@ func (ss *App) handleConnection(conn net.Conn) {
 			req:      req,
 			s5:       conn,
 			proxyCfg: &ProxyCfg{AddrWs: ss.AddrWs}, //todo config dynamic
-		}
-		err := session.connectProxyServer()
-		if err != nil {
-			log.Println(err)
-			return
+			wsExitCh: make(chan struct{}, 1),
 		}
 		defer session.Close()
-		session.pipe(ctx)
-
+		err = session.connectProxyServer()
+		if err == nil {
+			session.pipe(ctx)
+		}
 	} else {
-		log.Printf("unsupported command: %d", req.socks5Cmd)
-		return
+		err = fmt.Errorf("unsupported command: %d", req.socks5Cmd)
 	}
-
+	//handle all error
+	if err != nil {
+		log.Println(err)
+		conn.Write(socks5ReplyFailBytes)
+	}
 }

@@ -18,40 +18,53 @@ type SessionTcp struct {
 	s5       net.Conn
 	ws       *websocket.Conn
 	proxyCfg *ProxyCfg
+	wsExitCh chan struct{}
 }
 
 func (st *SessionTcp) connectProxyServer() error {
 	wsAddr := st.proxyCfg.AddrWs
 	ws, _, err := websocket.DefaultDialer.Dial(wsAddr, nil)
 	if err != nil {
-		_, err = st.s5.Write([]byte{socksVersion, socks5ReplyFail, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
-		if err != nil {
-			log.Printf("failed to send response to client: %v", err)
-		}
 		return fmt.Errorf("failed to connect to remote proxy server: %s ,error:%v", wsAddr, err)
 	} // Send success response
 	_, err = st.s5.Write([]byte{socksVersion, socks5ReplySuccess, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 	if err != nil {
 		log.Printf("failed to send response to client: %v", err)
 	}
+	ws.SetCloseHandler(func(code int, text string) error {
+		log.Println("ws closed", code, text)
+		st.wsExitCh <- struct{}{}
+		return nil
+	})
 	st.ws = ws
 	return nil
 }
 
+func (st *SessionTcp) Close() {
+	//s5 has already been closed in outside
+	ws := st.ws
+	if ws == nil {
+		return
+	}
+	err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	if err != nil {
+		log.Println("send websocket close message failed: ", err)
+	}
+	err = ws.Close()
+	if err != nil {
+		log.Println("close websocket conn failed: ", err)
+	}
+}
+
 func (st *SessionTcp) pipe(ctx context.Context) {
-	exitWs := make(chan struct{}, 1)
 	ws := st.ws
 	s5 := st.s5
-	firstData, err := st.req.vlessHeader(st.proxyCfg.UUID)
+	firstData, err := st.req.vlessHeaderTcp(st.proxyCfg.UUID)
 	if err != nil {
 		log.Println("failed to generate vless header")
 		return
 	}
-	ws.SetCloseHandler(func(code int, text string) error {
-		log.Println("ws closed", code, text)
-		exitWs <- struct{}{}
-		return nil
-	})
+
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
@@ -63,11 +76,11 @@ func (st *SessionTcp) pipe(ctx context.Context) {
 		}()
 		for {
 			select {
-			case <-exitWs:
+			case <-st.wsExitCh:
 				log.Println("exitWs")
 				return
 			case <-ctx.Done():
-				log.Println("doneCh: ws -> s5")
+				log.Println("ctx.Done: ws -> s5")
 				return
 			default:
 				ws.SetReadDeadline(time.Now().Add(1 * time.Second))
@@ -107,7 +120,7 @@ func (st *SessionTcp) pipe(ctx context.Context) {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Println("doneCh: s5 -> ws")
+				log.Println("ctx.Done: s5 -> ws")
 				return
 			default:
 				buf := make([]byte, 8<<10)
@@ -147,22 +160,6 @@ func (st *SessionTcp) pipe(ctx context.Context) {
 		}
 	}()
 	wg.Wait()
-	log.Println("2 doneCh")
+	log.Println("2 goroutines is Done")
 
-}
-
-func (st *SessionTcp) Close() {
-	//s5 has already been closed in outside
-	ws := st.ws
-	if ws == nil {
-		return
-	}
-	err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	if err != nil {
-		log.Println("send websocket close message failed: ", err)
-	}
-	err = ws.Close()
-	if err != nil {
-		log.Println("close websocket conn failed: ", err)
-	}
 }
