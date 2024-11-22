@@ -88,17 +88,17 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 		for {
 			select {
 			case <-st.wsExitCh:
-				log.Println("exitWs")
+				span.Println("exitWs")
 				return
 			case <-ctx.Done():
-				log.Println("ctx.Done: ws -> s5")
+				span.Println("ctx.Done: ws -> s5")
 				return
 			default:
 				//ws.SetReadDeadline(time.Now().Add(1 * time.Second))
 				_, data, err := ws.ReadMessage()
 				n := len(data)
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
-					log.Println("EOF from ws")
+					span.Println("EOF from ws")
 					return
 				}
 				if err != nil {
@@ -117,7 +117,7 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 				//s5.SetWriteDeadline(time.Now().Add(10 * time.Millisecond))
 				_, err = s5.Write(data[fromByteIndex:n])
 				if err != nil {
-					log.Println(" ws -> socks5 error", err)
+					span.Println(" ws -> socks5 error", err)
 					return
 				}
 			}
