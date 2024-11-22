@@ -5,12 +5,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/johntdyer/slackrus"
-
 	"github.com/mojocn/felix/model"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -49,27 +46,13 @@ func init() {
 }
 
 func initFunc() {
-	initViper()
 	model.CreateSQLiteDb(verbose)
-	initSlackLogrus()
+	setupLog()
 }
-func initSlackLogrus() {
+func setupLog() {
 	lvl := logrus.InfoLevel
-	//钉钉群机器人API地址
 	logrus.SetLevel(lvl)
-	logrus.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "06-01-02T15:04:05", PrettyPrint: true})
+	//logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetReportCaller(true)
-	mySlackApi := viper.GetString("felix.slack")
-	logrus.AddHook(&slackrus.SlackrusHook{
-		HookURL:        mySlackApi,
-		AcceptedLevels: slackrus.LevelThreshold(logrus.ErrorLevel),
-		Channel:        "#Felix",
-		IconEmoji:      ":ghost:",
-		Username:       "Felix",
-	})
-
-}
-
-func initViper() {
 
 }

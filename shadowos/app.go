@@ -70,10 +70,10 @@ func (*App) socks5Request(conn net.Conn) (*Socks5Request, error) {
 	if len(data) < 4 {
 		return nil, fmt.Errorf("request too short")
 	}
-	if data[0] != socks5Ver {
+	if data[0] != socks5Version {
 		return nil, fmt.Errorf("unsupported SOCKS version: %d", data[0])
 	}
-	info := new(Socks5Request)
+	info := NewSocks5Request("")
 	if data[1] == socks5CmdConnect {
 		info.socks5Cmd = socks5CmdConnect
 	} else if data[1] == socks5CmdUdpAssoc {
@@ -130,6 +130,7 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *Pr
 		log.Printf("failed to parse SOCKS5 request: %v", err)
 		return
 	}
+	req.Logger().Info("connect to->")
 	if req.socks5Cmd == socks5CmdConnect { //tcp
 		session := &SessionTcp{
 			req:      req,

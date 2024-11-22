@@ -20,12 +20,12 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/olekukonko/tablewriter v0.0.1
 	github.com/pkg/sftp v1.10.0
-	github.com/sirupsen/logrus v1.4.1
+	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/viper v1.4.0
 	golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
 	golang.org/x/net v0.0.0-20190522155817-f3200d17e092
-	golang.org/x/sys v0.0.0-20190507160741-ecd444e8653b
+	golang.org/x/sys v0.27.0
 )
 
 require (

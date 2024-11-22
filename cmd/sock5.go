@@ -25,7 +25,7 @@ var (
 )
 
 var socks5Cmd = &cobra.Command{
-	Use:   "vless",
+	Use:   "socks5",
 	Short: "socks5 over websocket",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
