@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"sync"
-	"time"
 )
 
 type SessionTcp struct {
@@ -32,8 +31,11 @@ func (st *SessionTcp) proxyServer(proxy *ProxyCfg) error {
 	}
 	proxy.WsHeader.Set("x-req-id", st.req.id)
 	proxy.WsHeader.Set("Authorization", proxy.uuidHex())
+	proxy.WsHeader.Set("x-network", "tcp")
+	proxy.WsHeader.Set("x-addr", st.req.addr())
+	proxy.WsHeader.Set("x-port", st.req.port())
 
-	ws, _, err := websocket.DefaultDialer.Dial(proxy.WsUrl, nil)
+	ws, _, err := websocket.DefaultDialer.Dial(proxy.WsUrl, proxy.WsHeader)
 	if err != nil {
 		return fmt.Errorf("failed to connect to remote proxy server: %s ,error:%v", proxy.WsUrl, err)
 	} // Send success response
@@ -92,7 +94,7 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 				log.Println("ctx.Done: ws -> s5")
 				return
 			default:
-				ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+				//ws.SetReadDeadline(time.Now().Add(1 * time.Second))
 				_, data, err := ws.ReadMessage()
 				n := len(data)
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
@@ -112,7 +114,7 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 					fromByteIndex = 2 + int(extraN)
 				}
 				//log.Println("write back socks5", n)
-				s5.SetWriteDeadline(time.Now().Add(10 * time.Millisecond))
+				//s5.SetWriteDeadline(time.Now().Add(10 * time.Millisecond))
 				_, err = s5.Write(data[fromByteIndex:n])
 				if err != nil {
 					log.Println(" ws -> socks5 error", err)
@@ -133,7 +135,7 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 				return
 			default:
 				buf := make([]byte, 8<<10)
-				s5.SetReadDeadline(time.Now().Add(20 * time.Millisecond))
+				//s5.SetReadDeadline(time.Now().Add(20 * time.Millisecond))
 				n, err := s5.Read(buf)
 				if errors.Is(err, os.ErrDeadlineExceeded) {
 					continue
@@ -160,7 +162,7 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 					data = append(firstData, buf[:n]...)
 					firstData = nil
 				}
-				ws.SetWriteDeadline(time.Now().Add(1 * time.Second))
+				//ws.SetWriteDeadline(time.Now().Add(1 * time.Second))
 				err = ws.WriteMessage(websocket.BinaryMessage, data)
 				if err != nil {
 					span.Debug("write error", err)

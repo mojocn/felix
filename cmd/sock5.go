@@ -7,6 +7,7 @@ import (
 	"github.com/mojocn/felix/shadowos"
 	"github.com/sirupsen/logrus"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -47,8 +48,9 @@ var socks5Cmd = &cobra.Command{
 		}()
 
 		cfg := &shadowos.ProxyCfg{
-			WsUrl: url,
-			UUID:  uid,
+			WsUrl:    url,
+			WsHeader: http.Header{},
+			UUID:     uid,
 		}
 		app.Run(ctx, cfg)
 	},
