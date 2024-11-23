@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"golang.org/x/sys/windows/registry"
 	"log"
-	"log/slog"
-	"os/exec"
 )
 
 func EnableInternetSetting(socks5Addr string) {
@@ -43,12 +41,12 @@ func EnableInternetSetting(socks5Addr string) {
 
 	fmt.Println("SOCKS5 proxy configuration applied successfully.")
 
-	cmd := exec.Command("netsh", "winhttp", "reset", "proxy")
-	err = cmd.Run()
-	if err != nil {
-		slog.Error("Error resetting proxy settings: ", err)
-	}
-	log.Println("Network settings refreshed.")
+	//cmd := exec.Command("netsh", "winhttp", "reset", "proxy")
+	//err = cmd.Run()
+	//if err != nil {
+	//	slog.Error("Error resetting proxy settings: ", err)
+	//}
+	//log.Println("Network settings refreshed.")
 }
 func DisableInternetSetting() {
 	log.Print("Disabling SOCKS5 proxy settings...")
@@ -65,10 +63,10 @@ func DisableInternetSetting() {
 		log.Fatalf("Error enabling proxy: %v", err)
 	}
 
-	cmd := exec.Command("netsh", "winhttp", "reset", "proxy")
-	err = cmd.Run()
-	if err != nil {
-		log.Fatalf("Error resetting proxy settings: %v", err)
-	}
-	log.Println("Network settings refreshed.")
+	//cmd := exec.Command("netsh", "winhttp", "reset", "proxy")
+	//err = cmd.Run()
+	//if err != nil {
+	//	log.Fatalf("Error resetting proxy settings: %v", err)
+	//}
+	//log.Println("Network settings refreshed.")
 }
