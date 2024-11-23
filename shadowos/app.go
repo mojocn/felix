@@ -134,13 +134,13 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *Pr
 	}
 	req.Logger().Info("connect to->")
 	if req.socks5Cmd == socks5CmdConnect { //tcp
-		session := &SessionTcp{
+		session := &SessionTcp5e{
 			req:      req,
 			s5:       conn,
 			wsExitCh: make(chan struct{}, 1),
 		}
 		defer session.Close()
-		err = session.breakGfwSvr(cfg)
+		err = session.breakGfwSvr(ctx, cfg)
 		if err == nil {
 			session.pipe(ctx, cfg.UUID)
 		}

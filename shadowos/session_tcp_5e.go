@@ -6,25 +6,24 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"io"
-	"log"
 	"log/slog"
 	"net"
 	"os"
 	"sync"
 )
 
-type SessionTcp struct {
+type SessionTcp5e struct {
 	req      *Socks5Request
 	s5       net.Conn
 	ws       *websocket.Conn
 	wsExitCh chan struct{}
 }
 
-func (st *SessionTcp) Logger() *slog.Logger {
+func (st *SessionTcp5e) Logger() *slog.Logger {
 	return st.req.Logger()
 }
 
-func (st *SessionTcp) breakGfwSvr(ctx context.Context, proxy *ProxyCfg) error {
+func (st *SessionTcp5e) breakGfwSvr(ctx context.Context, proxy *ProxyCfg) error {
 	ws, err := webSocketConn(ctx, proxy, st.req)
 	if err != nil {
 		return err
@@ -39,7 +38,7 @@ func (st *SessionTcp) breakGfwSvr(ctx context.Context, proxy *ProxyCfg) error {
 	return nil
 }
 
-func (st *SessionTcp) Close() {
+func (st *SessionTcp5e) Close() {
 	//s5 has already been closed in outside
 	if ws := st.ws; ws != nil {
 		span := st.Logger()
@@ -54,21 +53,15 @@ func (st *SessionTcp) Close() {
 	}
 }
 
-func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
+func (st *SessionTcp5e) pipe(ctx context.Context, _ [16]byte) {
 	ws := st.ws
 	s5 := st.s5
-	firstData, err := st.req.vlessHeaderTcp(uid)
-	if err != nil {
-		log.Println("failed to generate vless header")
-		return
-	}
 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
 	go func() {
 		span := st.Logger().With("fn", "ws -> s5")
-		isFirstReceive := true
 		defer func() {
 			span.Debug("wg done")
 			wg.Done()
@@ -95,12 +88,6 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 					return
 				}
 				fromByteIndex := 0
-				// skip the first data
-				if isFirstReceive && n >= 2 {
-					extraN := data[1]
-					isFirstReceive = false
-					fromByteIndex = 2 + int(extraN)
-				}
 				//log.Println("write back socks5", n)
 				//s5.SetWriteDeadline(time.Now().Add(10 * time.Millisecond))
 				_, err = s5.Write(data[fromByteIndex:n])
@@ -145,13 +132,9 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 					continue
 				}
 				span.Debug("s5 read", "n", n)
-				data := buf[:n]
-				if len(firstData) > 0 {
-					data = append(firstData, buf[:n]...)
-					firstData = nil
-				}
+
 				//ws.SetWriteDeadline(time.Now().Add(1 * time.Second))
-				err = ws.WriteMessage(websocket.BinaryMessage, data)
+				err = ws.WriteMessage(websocket.BinaryMessage, buf[:n])
 				if err != nil {
 					span.Debug("write error", err)
 					return

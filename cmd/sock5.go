@@ -23,6 +23,8 @@ var (
 	}
 	userUUID = "53881505-c10c-464a-8949-e57184a576a9"
 	url      = "ws://demo.libragen.cn/5sdfasdf"
+	//url = "ws://127.0.0.1:8787/5sdfasdf"
+	protocol = "socks5e" // or vless
 )
 
 var socks5Cmd = &cobra.Command{
@@ -52,6 +54,7 @@ var socks5Cmd = &cobra.Command{
 			WsUrl:    url,
 			WsHeader: http.Header{},
 			UUID:     uid,
+			Protocol: protocol,
 		}
 		app.Run(ctx, cfg)
 	},
