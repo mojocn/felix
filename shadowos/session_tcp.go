@@ -5,11 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
 	"io"
 	"log"
+	"log/slog"
 	"net"
-	"net/http"
 	"os"
 	"sync"
 )
@@ -21,26 +20,17 @@ type SessionTcp struct {
 	wsExitCh chan struct{}
 }
 
-func (st *SessionTcp) Logger() *logrus.Entry {
+func (st *SessionTcp) Logger() *slog.Logger {
 	return st.req.Logger()
 }
 
-func (st *SessionTcp) proxyServer(proxy *ProxyCfg) error {
-	if len(proxy.WsHeader) == 0 {
-		proxy.WsHeader = http.Header{}
-	}
-	proxy.WsHeader.Set("x-req-id", st.req.id)
-	proxy.WsHeader.Set("Authorization", proxy.uuidHex())
-	proxy.WsHeader.Set("x-network", "tcp")
-	proxy.WsHeader.Set("x-addr", st.req.addr())
-	proxy.WsHeader.Set("x-port", st.req.port())
-
-	ws, _, err := websocket.DefaultDialer.Dial(proxy.WsUrl, proxy.WsHeader)
+func (st *SessionTcp) breakGfwSvr(proxy *ProxyCfg) error {
+	ws, err := webSocketConn(proxy, st.req)
 	if err != nil {
-		return fmt.Errorf("failed to connect to remote proxy server: %s ,error:%v", proxy.WsUrl, err)
-	} // Send success response
+		return err
+	}
 	ws.SetCloseHandler(func(code int, text string) error {
-		log.Println("ws closed", code, text)
+		st.Logger().Debug("ws has closed", "code", code, "text", text)
 		st.wsExitCh <- struct{}{}
 		return nil
 	})
@@ -50,24 +40,21 @@ func (st *SessionTcp) proxyServer(proxy *ProxyCfg) error {
 }
 
 func (st *SessionTcp) Close() {
-	span := st.Logger()
 	//s5 has already been closed in outside
-	ws := st.ws
-	if ws == nil {
-		return
-	}
-	err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	if err != nil {
-		span.Debug("send websocket close message failed: ", err)
-	}
-	err = ws.Close()
-	if err != nil {
-		span.Debug("close websocket conn failed: ", err)
+	if ws := st.ws; ws != nil {
+		span := st.Logger()
+		err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err != nil {
+			span.Debug("send websocket close message failed: ", err)
+		}
+		err = ws.Close()
+		if err != nil {
+			span.Debug("close websocket conn failed: ", err)
+		}
 	}
 }
 
 func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
-	span := st.Logger()
 	ws := st.ws
 	s5 := st.s5
 	firstData, err := st.req.vlessHeaderTcp(uid)
@@ -80,29 +67,30 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 	wg.Add(2)
 
 	go func() {
+		span := st.Logger().With("fn", "ws -> s5")
 		isFirstReceive := true
 		defer func() {
-			span.Debug("[ddd] ws -> s5")
+			span.Debug("wg done")
 			wg.Done()
 		}()
 		for {
 			select {
 			case <-st.wsExitCh:
-				span.Println("exitWs")
+				span.Info("exitWs")
 				return
 			case <-ctx.Done():
-				span.Println("ctx.Done: ws -> s5")
+				span.Info("ctx.Done exit")
 				return
 			default:
 				//ws.SetReadDeadline(time.Now().Add(1 * time.Second))
 				_, data, err := ws.ReadMessage()
 				n := len(data)
 				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
-					span.Println("EOF from ws")
+					span.Info("EOF from ws")
 					return
 				}
 				if err != nil {
-					span.Debugf("other ws -> socks5 error %T", err)
+					span.Error("other ws -> socks5 error %T", err)
 					span.Debug("other ws -> socks5 error", err)
 					return
 				}
@@ -117,21 +105,22 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 				//s5.SetWriteDeadline(time.Now().Add(10 * time.Millisecond))
 				_, err = s5.Write(data[fromByteIndex:n])
 				if err != nil {
-					span.Println(" ws -> socks5 error", err)
+					span.Error(" ws -> socks5 error", err)
 					return
 				}
 			}
 		}
 	}()
 	go func() { // s5 -> ws
+		span := st.Logger().With("fn", "s5 -> ws")
 		defer func() {
-			span.Debug("[ddd] s5 -> ws")
+			span.Debug("wg done")
 			wg.Done()
 		}()
 		for {
 			select {
 			case <-ctx.Done():
-				span.Debug("ctx.Done: s5 -> ws")
+				span.Debug("ctx.Done exit")
 				return
 			default:
 				buf := make([]byte, 8<<10)
@@ -146,19 +135,18 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 				}
 				var opErr *net.OpError
 				if err != nil && errors.As(err, &opErr) {
-					span.Error("opErr", opErr)
+					span.Error("net.OpError", "err", opErr)
 					return
 				}
 
 				if err != nil {
-					span.Errorf("read from socks5 error %T", err)
-					span.Error("read from socks5 error", err)
+					et := fmt.Sprintf("%T", err)
+					span.With("errType", et).Error("s5 read", err)
 					continue
 				}
-				span.Debug("read from socks5", n)
+				span.Debug("s5 read", "n", n)
 				data := buf[:n]
 				if len(firstData) > 0 {
-					span.Debug("send version header only once")
 					data = append(firstData, buf[:n]...)
 					firstData = nil
 				}
@@ -172,6 +160,5 @@ func (st *SessionTcp) pipe(ctx context.Context, uid [16]byte) {
 		}
 	}()
 	wg.Wait()
-	span.Debug("2 goroutines is Done")
-
+	st.Logger().Debug("2 goroutines is Done")
 }

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/mojocn/felix/shadowos"
-	"github.com/sirupsen/logrus"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,7 +22,7 @@ var (
 		Timeout:    time.Second * 60,
 	}
 	userUUID = "53881505-c10c-464a-8949-e57184a576a9"
-	url      = "wss://demo.libragen.cn/5sdfasdf"
+	url      = "ws://demo.libragen.cn/5sdfasdf"
 )
 
 var socks5Cmd = &cobra.Command{
@@ -30,8 +30,9 @@ var socks5Cmd = &cobra.Command{
 	Short: "socks5 over websocket",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.SetFlags(log.LstdFlags | log.Lshortfile)
-		logrus.SetReportCaller(true)
+		slog.With("socks5", app.AddrSocks5).Info("socks5 server listening on")
+		log.SetFlags(log.Lmicroseconds | log.Lshortfile)
+		slog.SetLogLoggerLevel(slog.LevelDebug)
 
 		uid, err := uuid.Parse(userUUID)
 		if err != nil {

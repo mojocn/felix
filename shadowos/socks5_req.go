@@ -3,7 +3,8 @@ package shadowos
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
+	"log/slog"
+	"net"
 )
 
 type Socks5Request struct {
@@ -23,10 +24,8 @@ func NewSocks5Request(id string) *Socks5Request {
 
 func (s Socks5Request) addr() string {
 	addr := ""
-	if s.socks5Atyp == socks5AtypeIPv4 {
-		addr = fmt.Sprintf("%d.%d.%d.%d", s.dstAddr[0], s.dstAddr[1], s.dstAddr[2], s.dstAddr[3])
-	} else if s.socks5Atyp == socks5AtypeIPv6 {
-		addr = fmt.Sprintf("%x:%x:%x:%x:%x:%x:%x:%x", s.dstAddr[0], s.dstAddr[1], s.dstAddr[2], s.dstAddr[3], s.dstAddr[4], s.dstAddr[5], s.dstAddr[6], s.dstAddr[7])
+	if s.socks5Atyp == socks5AtypeIPv4 || s.socks5Atyp == socks5AtypeIPv6 {
+		addr = net.IP(s.dstAddr).String()
 	} else if s.socks5Atyp == socks5AtypeDomain {
 		addr = string(s.dstAddr)
 	} else {
@@ -54,14 +53,8 @@ func (s Socks5Request) port() string {
 	return fmt.Sprintf("%v", port)
 }
 
-func (s Socks5Request) Logger() *logrus.Entry {
-	return logrus.WithFields(logrus.Fields{
-		"reqId": s.id,
-		"cmd":   s.cmd(),
-		"atyp":  s.aType(),
-		"addr":  s.addr(),
-		"port":  s.port(),
-	})
+func (s Socks5Request) Logger() *slog.Logger {
+	return slog.With("reqId", s.id, "cmd", s.cmd(), "atyp", s.aType(), "addr", s.addr(), "port", s.port())
 }
 func (s Socks5Request) String() string {
 	return fmt.Sprintf("socks5Cmd: %v, socks5Atyp: %v, dstAddr: %v, dstPort: %v", s.cmd(), s.aType(), s.addr(), s.addr())

@@ -15,7 +15,7 @@ type SessionUdp struct {
 	udpConn *net.UDPConn
 }
 
-func (st *SessionUdp) proxyServer(cfg *ProxyCfg) error {
+func (st *SessionUdp) breakGfwSvr(cfg *ProxyCfg) error {
 	udpAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
 	udpConn, err := net.ListenUDP("udp4", udpAddr)
 	if err != nil {
@@ -51,24 +51,21 @@ func (st *SessionUdp) proxyServer(cfg *ProxyCfg) error {
 
 func (st *SessionUdp) Close() {
 	//s5 has already been closed in outside
-	ws := st.ws
-	if ws == nil {
-		return
-	}
 	if st.udpConn != nil {
 		err := st.udpConn.Close()
 		if err != nil {
 			log.Println("close udp conn failed: ", err)
 		}
 	}
-
-	err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	if err != nil {
-		log.Println("send websocket close message failed: ", err)
-	}
-	err = ws.Close()
-	if err != nil {
-		log.Println("close websocket conn failed: ", err)
+	if ws := st.ws; ws != nil {
+		err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		if err != nil {
+			log.Println("send websocket close message failed: ", err)
+		}
+		err = ws.Close()
+		if err != nil {
+			log.Println("close websocket conn failed: ", err)
+		}
 	}
 }
 
@@ -92,7 +89,7 @@ func (st *SessionUdp) pipe(ctx context.Context, uid [16]byte) {
 					return
 				}
 				if n > 0 {
-					st.handleUDPPacket(st.udpConn, clientAddr, packet[:n], uid)
+					st.handleUdp53Packet(st.udpConn, clientAddr, packet[:n], uid)
 				}
 			}
 		}
@@ -107,9 +104,8 @@ func (st *SessionUdp) pipe(ctx context.Context, uid [16]byte) {
 	exitCh <- struct{}{}
 }
 
-func (st *SessionUdp) handleUDPPacket(conn *net.UDPConn, clientAddr *net.UDPAddr, udpPacket []byte, uid [16]byte) {
+func (st *SessionUdp) handleUdp53Packet(conn *net.UDPConn, clientAddr *net.UDPAddr, udpPacket []byte, uid [16]byte) {
 	// Parse UDP udpPacket
-
 	frag := udpPacket[2]
 	atyp := udpPacket[3]
 	if frag != 0x00 {

@@ -19,6 +19,8 @@ func (ss *App) Run(ctx context.Context, cfg *ProxyCfg) {
 	if err != nil {
 		log.Fatalf("Failed to listen on port %s: %v", ss.AddrSocks5, err)
 	}
+	EnableInternetSetting(ss.AddrSocks5)
+	defer DisableInternetSetting()
 	defer listener.Close()
 	log.Println("SOCKS5 server listening on: " + ss.AddrSocks5)
 	for {
@@ -138,7 +140,7 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *Pr
 			wsExitCh: make(chan struct{}, 1),
 		}
 		defer session.Close()
-		err = session.proxyServer(cfg)
+		err = session.breakGfwSvr(cfg)
 		if err == nil {
 			session.pipe(ctx, cfg.UUID)
 		}
@@ -152,7 +154,7 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *Pr
 			udpConn: nil,
 		}
 		defer session.Close()
-		err = session.proxyServer(cfg)
+		err = session.breakGfwSvr(cfg)
 		if err == nil {
 			session.pipe(ctx, cfg.UUID)
 		}
