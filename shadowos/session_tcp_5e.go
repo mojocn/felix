@@ -44,11 +44,11 @@ func (st *SessionTcp5e) Close() {
 		span := st.Logger()
 		err := ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 		if err != nil {
-			span.Debug("send websocket close message failed: ", err)
+			span.Debug("send websocket close message failed: ", "err", err)
 		}
 		err = ws.Close()
 		if err != nil {
-			span.Debug("close websocket conn failed: ", err)
+			span.Debug("close websocket conn failed: ", "err", err)
 		}
 	}
 }
@@ -83,8 +83,7 @@ func (st *SessionTcp5e) pipe(ctx context.Context, _ [16]byte) {
 					return
 				}
 				if err != nil {
-					span.Error("other ws -> socks5 error %T", err)
-					span.Debug("other ws -> socks5 error", err)
+					span.Debug("other ws -> socks5 error", "err", err.Error())
 					return
 				}
 				fromByteIndex := 0
@@ -92,7 +91,7 @@ func (st *SessionTcp5e) pipe(ctx context.Context, _ [16]byte) {
 				//s5.SetWriteDeadline(time.Now().Add(10 * time.Millisecond))
 				_, err = s5.Write(data[fromByteIndex:n])
 				if err != nil {
-					span.Error(" ws -> socks5 error", err)
+					span.Error(" ws -> socks5", "err", err.Error())
 					return
 				}
 			}
@@ -128,7 +127,7 @@ func (st *SessionTcp5e) pipe(ctx context.Context, _ [16]byte) {
 
 				if err != nil {
 					et := fmt.Sprintf("%T", err)
-					span.With("errType", et).Error("s5 read", err)
+					span.With("errType", et).Error("s5 read", "err", err.Error())
 					continue
 				}
 				span.Debug("s5 read", "n", n)
@@ -136,7 +135,7 @@ func (st *SessionTcp5e) pipe(ctx context.Context, _ [16]byte) {
 				//ws.SetWriteDeadline(time.Now().Add(1 * time.Second))
 				err = ws.WriteMessage(websocket.BinaryMessage, buf[:n])
 				if err != nil {
-					span.Debug("write error", err)
+					span.Debug("write error", "err", err.Error())
 					return
 				}
 			}
