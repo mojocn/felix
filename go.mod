@@ -23,8 +23,8 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/viper v1.4.0
-	golang.org/x/crypto v0.0.0-20190426145343-a29dc8fdc734
-	golang.org/x/net v0.0.0-20190522155817-f3200d17e092
+	golang.org/x/crypto v0.29.0
+	golang.org/x/net v0.31.0
 	golang.org/x/sys v0.27.0
 )
 
@@ -54,7 +54,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/ugorji/go v1.1.4 // indirect
-	golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2 // indirect
+	golang.org/x/text v0.20.0 // indirect
 	gopkg.in/go-playground/validator.v8 v8.18.2 // indirect
 	gopkg.in/yaml.v2 v2.2.2 // indirect
 )

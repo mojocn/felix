@@ -56,6 +56,7 @@ var socks5Cmd = &cobra.Command{
 			UUID:     uid,
 			Protocol: protocol,
 		}
+		log.Println("using:", cfg.Protocol)
 		app.Run(ctx, cfg)
 	},
 }
