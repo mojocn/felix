@@ -26,20 +26,18 @@ func (g *GeoDns) Close() error {
 }
 
 func (g *GeoDns) country(domainOrIp string) (string, error) {
-	db, err := geoip2.Open("GeoLite2-Country.mmdb") //https://github.com/P3TERX/GeoLite.mmdb?tab=readme-ov-file
-	if err != nil {
-		return "", err
-	}
-	defer db.Close()
 	ip := net.ParseIP(domainOrIp)
 	if ip == nil {
 		ips, err := net.LookupIP(domainOrIp)
 		if err != nil {
 			return "", err
 		}
+		if len(ips) == 0 {
+			return "", fmt.Errorf("no IP found for %s", domainOrIp)
+		}
 		ip = ips[0]
 	}
-	record, err := db.Country(ip)
+	record, err := g.db.Country(ip)
 	if err != nil {
 		return "", err
 	}
