@@ -8,15 +8,14 @@ import (
 )
 
 type Socks5Request struct {
-	id             string
-	socks5Cmd      byte
-	socks5Atyp     byte
-	dstAddr        []byte
-	dstPort        []byte
-	IsoCountryCode string
+	id         string
+	socks5Cmd  byte
+	socks5Atyp byte
+	dstAddr    []byte
+	dstPort    []byte
 }
 
-func parseSocks5Request(data []byte, geo *GeoIP) (*Socks5Request, error) {
+func parseSocks5Request(data []byte) (*Socks5Request, error) {
 	id := uuid.NewString()
 	info := &Socks5Request{id: id}
 
@@ -41,11 +40,6 @@ func parseSocks5Request(data []byte, geo *GeoIP) (*Socks5Request, error) {
 		info.socks5Atyp = socks5AtypeIPv4
 		info.dstAddr = data[4:8]
 		info.dstPort = data[8:10]
-		isoCountryCode, err := geo.country(info.dstAddr, nil)
-		if err != nil {
-			slog.Error("failed to get country code", "err", err.Error())
-		}
-		info.IsoCountryCode = isoCountryCode
 	} else if data[3] == socks5AtypeDomain {
 		if len(data) < 5 {
 			return nil, fmt.Errorf("request too short for atyp Domain")
@@ -54,11 +48,6 @@ func parseSocks5Request(data []byte, geo *GeoIP) (*Socks5Request, error) {
 		info.socks5Atyp = socks5AtypeDomain
 		info.dstAddr = data[5 : 5+addrLen]
 		info.dstPort = data[5+addrLen : 5+addrLen+2]
-		isoCountryCode, err := geo.country(nil, info.dstAddr)
-		if err != nil {
-			slog.Error("failed to get country code", "err", err.Error())
-		}
-		info.IsoCountryCode = isoCountryCode
 	} else if data[3] == socks5AtypeIPv6 {
 		if len(data) < 22 {
 			return nil, fmt.Errorf("request too short for atyp IPv6")
@@ -66,18 +55,13 @@ func parseSocks5Request(data []byte, geo *GeoIP) (*Socks5Request, error) {
 		info.socks5Atyp = socks5AtypeIPv6
 		info.dstAddr = data[4:20]
 		info.dstPort = data[20:22]
-		isoCountryCode, err := geo.country(info.dstAddr, nil)
-		if err != nil {
-			slog.Error("failed to get country code", "err", err.Error())
-		}
-		info.IsoCountryCode = isoCountryCode
 	} else {
 		return nil, fmt.Errorf("unsupported address type: %d", data[3])
 	}
 	return info, nil
 }
 
-func (s Socks5Request) addr() string {
+func (s Socks5Request) host() string {
 	addr := ""
 	if s.socks5Atyp == socks5AtypeIPv4 || s.socks5Atyp == socks5AtypeIPv6 {
 		addr = net.IP(s.dstAddr).String()
@@ -87,6 +71,9 @@ func (s Socks5Request) addr() string {
 		addr = string(s.dstAddr)
 	}
 	return addr
+}
+func (s Socks5Request) addr() string {
+	return fmt.Sprintf("%s:%s", s.host(), s.port())
 }
 func (s Socks5Request) cmd() string {
 	cmd := "unknown"
@@ -109,10 +96,10 @@ func (s Socks5Request) port() string {
 }
 
 func (s Socks5Request) Logger() *slog.Logger {
-	return slog.With("reqId", s.id, "cmd", s.cmd(), "atyp", s.aType(), "addr", s.addr(), "port", s.port())
+	return slog.With("reqId", s.id, "cmd", s.cmd(), "atyp", s.aType(), "host", s.host(), "port", s.port())
 }
 func (s Socks5Request) String() string {
-	return fmt.Sprintf("socks5Cmd: %v, socks5Atyp: %v, dstAddr: %v, dstPort: %v", s.cmd(), s.aType(), s.addr(), s.addr())
+	return fmt.Sprintf("socks5Cmd: %v, socks5Atyp: %v, dstAddr: %v, dstPort: %v, country: %s", s.cmd(), s.aType(), s.host(), s.port())
 }
 
 func (s Socks5Request) addressBytes() []byte {

@@ -5,22 +5,16 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/mojocn/felix/shadowos"
+	"github.com/spf13/cobra"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
-
-	"github.com/spf13/cobra"
 )
 
 var (
-	app = &shadowos.App{
-		AddrSocks5: "127.0.0.1:1080",
-		Timeout:    time.Second * 60,
-	}
 	userUUID = "53881505-c10c-464a-8949-e57184a576a9"
 	url      = "ws://demo.libragen.cn/5sdfasdf"
 	//url = "ws://127.0.0.1:8787/5sdfasdf"
@@ -32,6 +26,10 @@ var socks5Cmd = &cobra.Command{
 	Short: "socks5 over websocket",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
+		app, err := shadowos.NewApp("127.0.0.1:1080", "C:\\artwork\\felix\\GeoLite2-Country.mmdb")
+		if err != nil {
+			log.Fatal(err)
+		}
 		slog.With("socks5", app.AddrSocks5).Info("socks5 server listening on")
 		log.SetFlags(log.Lmicroseconds | log.Lshortfile)
 		slog.SetLogLoggerLevel(slog.LevelDebug)

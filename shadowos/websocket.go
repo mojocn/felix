@@ -16,7 +16,7 @@ func webSocketConn(ctx context.Context, proxy *ProxyCfg, req *Socks5Request) (*w
 	headers.Set("x-req-id", req.id)
 	headers.Set("Authorization", proxy.uuidHex())
 	headers.Set("x-felix-network", "tcp")
-	headers.Set("x-felix-addr", req.addr())
+	headers.Set("x-felix-addr", req.host())
 	headers.Set("x-felix-port", req.port())
 	headers.Set("x-felix-protocol", proxy.Protocol)
 

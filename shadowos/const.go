@@ -22,3 +22,8 @@ const (
 	socks5AtypeDomain   = 0x03
 	socks5AtypeIPv6     = 0x04
 )
+
+var (
+	socks5ReplyBytesSuccess = []byte{socks5Version, socks5ReplySuccess, socks5ReplyReserved, socks5AtypeIPv4, 0, 0, 0, 0, 0, 0}
+	socks5ReplyBytesFailed  = []byte{socks5Version, socks5ReplyFail, socks5ReplyReserved, socks5AtypeIPv4, 0, 0, 0, 0, 0, 0}
+)
