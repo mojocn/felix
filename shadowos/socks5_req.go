@@ -8,14 +8,15 @@ import (
 )
 
 type Socks5Request struct {
-	id         string
-	socks5Cmd  byte
-	socks5Atyp byte
-	dstAddr    []byte
-	dstPort    []byte
+	id          string
+	socks5Cmd   byte
+	socks5Atyp  byte
+	dstAddr     []byte
+	dstPort     []byte
+	CountryCode string //iso country code
 }
 
-func parseSocks5Request(data []byte) (*Socks5Request, error) {
+func parseSocks5Request(data []byte, geo *GeoIP) (*Socks5Request, error) {
 	id := uuid.NewString()
 	info := &Socks5Request{id: id}
 
@@ -58,6 +59,12 @@ func parseSocks5Request(data []byte) (*Socks5Request, error) {
 	} else {
 		return nil, fmt.Errorf("unsupported address type: %d", data[3])
 	}
+	code, err := geo.country(info.host())
+	if err != nil {
+		info.Logger().Error("failed to get country code", "err", err.Error())
+	} else {
+		info.CountryCode = code
+	}
 	return info, nil
 }
 
@@ -96,7 +103,7 @@ func (s Socks5Request) port() string {
 }
 
 func (s Socks5Request) Logger() *slog.Logger {
-	return slog.With("reqId", s.id, "cmd", s.cmd(), "atyp", s.aType(), "host", s.host(), "port", s.port())
+	return slog.With("reqId", s.id, "cmd", s.cmd(), "atyp", s.aType(), "host", s.host(), "port", s.port(), "country", s.CountryCode)
 }
 func (s Socks5Request) String() string {
 	return fmt.Sprintf("socks5Cmd: %v, socks5Atyp: %v, dstAddr: %v, dstPort: %v, country: %s", s.cmd(), s.aType(), s.host(), s.port())

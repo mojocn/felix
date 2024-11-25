@@ -34,12 +34,18 @@ func NewApp(addr, geoIpPath string) (*App, error) {
 func (ss *App) Run(ctx context.Context, cfg *ProxyCfg) {
 	listener, err := net.Listen("tcp", ss.AddrSocks5)
 	if err != nil {
-		log.Fatalf("Failed to listen on port %s: %v", ss.AddrSocks5, err)
+		listener, err = net.Listen("tcp4", "127.0.0.1:0")
 	}
-	EnableInternetSetting(ss.AddrSocks5)
-	defer DisableInternetSetting()
+	if err != nil {
+		log.Fatalf("Failed to listen on %s: %v", ss.AddrSocks5, err)
+	}
+	ss.AddrSocks5 = listener.Addr().String()
+	slog.Info("socks5 server listening on", "addr", ss.AddrSocks5)
+
 	defer listener.Close()
 	log.Println("SOCKS5 server listening on: " + ss.AddrSocks5)
+	EnableInternetSetting(ss.AddrSocks5)
+	defer DisableInternetSetting()
 	for {
 		select {
 		case <-ctx.Done():
@@ -89,7 +95,7 @@ func (ss *App) socks5Request(conn net.Conn) (*Socks5Request, error) {
 	if len(data) < 4 {
 		return nil, fmt.Errorf("request too short")
 	}
-	return parseSocks5Request(data)
+	return parseSocks5Request(data, ss.geo)
 }
 
 func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *ProxyCfg) {
@@ -107,7 +113,7 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *Pr
 		log.Printf("failed to parse SOCKS5 request: %v", err)
 		return
 	}
-	req.Logger().Info("connect to->")
+	req.Logger().Info("remote target")
 	if req.socks5Cmd == socks5CmdConnect { //tcp
 		relayTcp, err := ss.dispatchRelayTcpServer(ctx, cfg, req)
 		if checkSocks5Request(conn, err) {
@@ -117,12 +123,10 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *Pr
 		ss.pipTcp(ctx, conn, relayTcp)
 	} else if req.socks5Cmd == socks5CmdUdpAssoc {
 		session := SessionUdp{
-			SessionTcp: SessionTcp{
-				req:      req,
-				s5:       conn,
-				wsExitCh: make(chan struct{}, 1),
-			},
-			udpConn: nil,
+			req:      req,
+			s5:       conn,
+			wsExitCh: make(chan struct{}, 1),
+			udpConn:  nil,
 		}
 		defer session.Close()
 		err = session.breakGfwSvr(cfg)
@@ -139,14 +143,8 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *Pr
 }
 
 func (ss *App) shouldGoDirect(req *Socks5Request) (goDirect bool) {
-	countryCode, err := ss.geo.country(req.host())
-	if err != nil {
-		slog.Error("geoip failed", "err", err.Error())
-		return true
-	}
-	slog.Info("countryCode", "code", countryCode, "host", req.host())
-	if countryCode == "CN" || countryCode == "" {
-		//empty means geoip failed or local address
+	if req.CountryCode == "CN" || req.CountryCode == "" {
+		//empty means geo ip failed or local address
 		return true
 	}
 	return false

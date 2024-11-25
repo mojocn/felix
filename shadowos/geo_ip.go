@@ -36,7 +36,7 @@ func (g *GeoIP) country(host string) (isoCountryCode string, err error) {
 	if ip == nil {
 		ips, err := net.LookupIP(host)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to lookup IP: %w", err)
 		}
 		if len(ips) == 0 {
 			return "", fmt.Errorf("no IP found for %s", host)
@@ -45,7 +45,7 @@ func (g *GeoIP) country(host string) (isoCountryCode string, err error) {
 	}
 	record, err := g.db.Country(ip)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get country: %w", err)
 	}
 	return record.Country.IsoCode, nil
 }

@@ -11,8 +11,11 @@ import (
 )
 
 type SessionUdp struct {
-	SessionTcp
-	udpConn *net.UDPConn
+	req      *Socks5Request
+	s5       net.Conn
+	ws       *websocket.Conn
+	wsExitCh chan struct{}
+	udpConn  *net.UDPConn
 }
 
 func (st *SessionUdp) breakGfwSvr(cfg *ProxyCfg) error {
