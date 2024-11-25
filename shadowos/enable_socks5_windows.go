@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-func EnableInternetSetting(socks5Addr string) {
+func proxySettingOn(socks5Addr string) {
 	// Open the registry key for proxy settings
 	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Internet Settings`, registry.SET_VALUE)
 	if err != nil {
@@ -48,7 +48,7 @@ func EnableInternetSetting(socks5Addr string) {
 	//}
 	//log.Println("Network settings refreshed.")
 }
-func DisableInternetSetting() {
+func proxySettingOff() {
 	log.Print("Disabling SOCKS5 proxy settings...")
 	// Open the registry key for proxy settings
 	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Internet Settings`, registry.SET_VALUE)

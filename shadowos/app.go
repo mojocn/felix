@@ -44,8 +44,8 @@ func (ss *App) Run(ctx context.Context, cfg *ProxyCfg) {
 
 	defer listener.Close()
 	log.Println("SOCKS5 server listening on: " + ss.AddrSocks5)
-	EnableInternetSetting(ss.AddrSocks5)
-	defer DisableInternetSetting()
+	proxySettingOn(ss.AddrSocks5)
+	defer proxySettingOff()
 	for {
 		select {
 		case <-ctx.Done():
@@ -115,12 +115,13 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *Pr
 	}
 	req.Logger().Info("remote target")
 	if req.socks5Cmd == socks5CmdConnect { //tcp
-		relayTcp, err := ss.dispatchRelayTcpServer(ctx, cfg, req)
+		relayTcpSvr, err := ss.dispatchRelayTcpServer(ctx, cfg, req)
 		if checkSocks5Request(conn, err) {
 			return
 		}
-		defer relayTcp.Close()
-		ss.pipTcp(ctx, conn, relayTcp)
+		defer relayTcpSvr.Close()
+		ss.pipeTcp(ctx, conn, relayTcpSvr)
+		return
 	} else if req.socks5Cmd == socks5CmdUdpAssoc {
 		session := SessionUdp{
 			req:      req,
@@ -171,7 +172,7 @@ func (ss *App) dispatchRelayTcpServer(ctx context.Context, cfg *ProxyCfg, req *S
 	return NewRelayTcpSocks5e(ctx, cfg, req)
 }
 
-func (ss *App) pipTcp(ctx context.Context, s5 net.Conn, relayRw io.ReadWriter) {
+func (ss *App) pipeTcp(ctx context.Context, s5 net.Conn, relayRw io.ReadWriter) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
@@ -190,12 +191,12 @@ func (ss *App) pipTcp(ctx context.Context, s5 net.Conn, relayRw io.ReadWriter) {
 				buf := make([]byte, 8<<10)
 				n, err := relayRw.Read(buf)
 				if err != nil {
-					span.Debug("other ws -> socks5 error", "err", err.Error())
+					span.Debug("relay read", "err", err.Error())
 					return
 				}
 				_, err = s5.Write(buf[:n])
 				if err != nil {
-					span.Error(" ws -> socks5", "err", err.Error())
+					span.Error("s5 write", "err", err.Error())
 					return
 				}
 			}
@@ -227,7 +228,7 @@ func (ss *App) pipTcp(ctx context.Context, s5 net.Conn, relayRw io.ReadWriter) {
 				//ws.SetWriteDeadline(time.Now().Add(1 * time.Second))
 				n, err = relayRw.Write(buf[:n])
 				if err != nil {
-					span.Error("write error", "err", err.Error())
+					span.Error("relay write", "err", err.Error())
 					return
 				}
 			}
