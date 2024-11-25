@@ -11,6 +11,7 @@ import (
 
 type App struct {
 	AddrSocks5 string
+	geo        *GeoIP
 	Timeout    time.Duration
 }
 
@@ -62,7 +63,7 @@ func (ss *App) socks5HandShake(conn net.Conn) error {
 	return nil
 }
 
-func (*App) socks5Request(conn net.Conn) (*Socks5Request, error) {
+func (ss *App) socks5Request(conn net.Conn) (*Socks5Request, error) {
 	buf := make([]byte, 8<<10)
 	n, err := conn.Read(buf)
 	if err != nil {
@@ -72,47 +73,7 @@ func (*App) socks5Request(conn net.Conn) (*Socks5Request, error) {
 	if len(data) < 4 {
 		return nil, fmt.Errorf("request too short")
 	}
-	if data[0] != socks5Version {
-		return nil, fmt.Errorf("unsupported SOCKS version: %d", data[0])
-	}
-	info := NewSocks5Request("")
-	if data[1] == socks5CmdConnect {
-		info.socks5Cmd = socks5CmdConnect
-	} else if data[1] == socks5CmdUdpAssoc {
-		info.socks5Cmd = socks5CmdUdpAssoc
-	} else {
-		//BIND is not supported
-		return nil, fmt.Errorf("unsupported command: %d", data[1])
-	}
-	if data[2] != socks5ReplyReserved {
-		return nil, fmt.Errorf("RSV must be 0x00")
-	}
-	if data[3] == socks5AtypeIPv4 {
-		if len(data) < 10 {
-			return nil, fmt.Errorf("request too short for atyp IPv4")
-		}
-		info.socks5Atyp = socks5AtypeIPv4
-		info.dstAddr = data[4:8]
-		info.dstPort = data[8:10]
-	} else if data[3] == socks5AtypeDomain {
-		if len(data) < 5 {
-			return nil, fmt.Errorf("request too short for atyp Domain")
-		}
-		addrLen := int(data[4])
-		info.socks5Atyp = socks5AtypeDomain
-		info.dstAddr = data[5 : 5+addrLen]
-		info.dstPort = data[5+addrLen : 5+addrLen+2]
-	} else if data[3] == socks5AtypeIPv6 {
-		if len(data) < 22 {
-			return nil, fmt.Errorf("request too short for atyp IPv6")
-		}
-		info.socks5Atyp = socks5AtypeIPv6
-		info.dstAddr = data[4:20]
-		info.dstPort = data[20:22]
-	} else {
-		return nil, fmt.Errorf("unsupported address type: %d", data[3])
-	}
-	return info, nil
+	return parseSocks5Request(data, ss.geo)
 }
 
 var socks5ReplyFailBytes = []byte{socks5Version, socks5ReplyFail, socks5ReplyReserved, socks5AtypeIPv4, 0, 0, 0, 0, 0, 0}

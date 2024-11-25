@@ -8,18 +8,73 @@ import (
 )
 
 type Socks5Request struct {
-	id         string
-	socks5Cmd  byte
-	socks5Atyp byte
-	dstAddr    []byte
-	dstPort    []byte
+	id             string
+	socks5Cmd      byte
+	socks5Atyp     byte
+	dstAddr        []byte
+	dstPort        []byte
+	IsoCountryCode string
 }
 
-func NewSocks5Request(id string) *Socks5Request {
-	if id == "" {
-		id = uuid.NewString()
+func parseSocks5Request(data []byte, geo *GeoIP) (*Socks5Request, error) {
+	id := uuid.NewString()
+	info := &Socks5Request{id: id}
+
+	if data[0] != socks5Version {
+		return nil, fmt.Errorf("unsupported SOCKS version: %d", data[0])
 	}
-	return &Socks5Request{id: id}
+	if data[1] == socks5CmdConnect {
+		info.socks5Cmd = socks5CmdConnect
+	} else if data[1] == socks5CmdUdpAssoc {
+		info.socks5Cmd = socks5CmdUdpAssoc
+	} else {
+		//BIND is not supported
+		return nil, fmt.Errorf("unsupported command: %d", data[1])
+	}
+	if data[2] != socks5ReplyReserved {
+		return nil, fmt.Errorf("RSV must be 0x00")
+	}
+	if data[3] == socks5AtypeIPv4 {
+		if len(data) < 10 {
+			return nil, fmt.Errorf("request too short for atyp IPv4")
+		}
+		info.socks5Atyp = socks5AtypeIPv4
+		info.dstAddr = data[4:8]
+		info.dstPort = data[8:10]
+		isoCountryCode, err := geo.country(info.dstAddr, nil)
+		if err != nil {
+			slog.Error("failed to get country code", "err", err.Error())
+		}
+		info.IsoCountryCode = isoCountryCode
+	} else if data[3] == socks5AtypeDomain {
+		if len(data) < 5 {
+			return nil, fmt.Errorf("request too short for atyp Domain")
+		}
+		addrLen := int(data[4])
+		info.socks5Atyp = socks5AtypeDomain
+		info.dstAddr = data[5 : 5+addrLen]
+		info.dstPort = data[5+addrLen : 5+addrLen+2]
+		isoCountryCode, err := geo.country(nil, info.dstAddr)
+		if err != nil {
+			slog.Error("failed to get country code", "err", err.Error())
+		}
+		info.IsoCountryCode = isoCountryCode
+	} else if data[3] == socks5AtypeIPv6 {
+		if len(data) < 22 {
+			return nil, fmt.Errorf("request too short for atyp IPv6")
+		}
+		info.socks5Atyp = socks5AtypeIPv6
+		info.dstAddr = data[4:20]
+		info.dstPort = data[20:22]
+		isoCountryCode, err := geo.country(info.dstAddr, nil)
+		if err != nil {
+			slog.Error("failed to get country code", "err", err.Error())
+		}
+		info.IsoCountryCode = isoCountryCode
+	} else {
+		return nil, fmt.Errorf("unsupported address type: %d", data[3])
+	}
+	return info, nil
 }
 
 func (s Socks5Request) addr() string {

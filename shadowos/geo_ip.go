@@ -6,40 +6,52 @@ import (
 	"net"
 )
 
-type GeoDns struct {
+type GeoIP struct {
 	db *geoip2.Reader
 }
 
-func NewGeoDns(dbFile string) *GeoDns {
-	db, err := geoip2.Open("GeoLite2-Country.mmdb") //https://github.com/P3TERX/GeoLite.mmdb?tab=readme-ov-file
-	if err != nil {
-		panic(fmt.Sprintf("Failed to open GeoIP database: %v", err))
+func NewGeoDns(dbFile string) (*GeoIP, error) {
+	if dbFile == "" {
+		dbFile = "GeoLite2-Country.mmdb" //https://github.com/P3TERX/GeoLite.mmdb?tab=readme-ov-file
 	}
-	return &GeoDns{db: db}
+	db, err := geoip2.Open(dbFile)
+	if err != nil {
+		return nil, err
+	}
+	return &GeoIP{db: db}, nil
 }
 
-func (g *GeoDns) Close() error {
+func (g *GeoIP) Close() error {
 	if g.db != nil {
 		return g.db.Close()
 	}
 	return nil
 }
 
-func (g *GeoDns) country(domainOrIp string) (string, error) {
-	ip := net.ParseIP(domainOrIp)
-	if ip == nil {
-		ips, err := net.LookupIP(domainOrIp)
+func (g *GeoIP) country(ip, domain []byte) (isoCountryCode string, err error) {
+	if g == nil {
+		return "", fmt.Errorf("geo databse is nil")
+	}
+	if len(domain) > 0 {
+		ips, err := net.LookupIP(string(domain))
 		if err != nil {
 			return "", err
 		}
 		if len(ips) == 0 {
-			return "", fmt.Errorf("no IP found for %s", domainOrIp)
+			return "", fmt.Errorf("no IP found for %s", domain)
 		}
-		ip = ips[0]
+		record, err := g.db.Country(ips[0])
+		if err != nil {
+			return "", err
+		}
+		return record.Country.IsoCode, nil
 	}
-	record, err := g.db.Country(ip)
-	if err != nil {
-		return "", err
+	if len(ip) > 0 {
+		record, err := g.db.Country(ip)
+		if err != nil {
+			return "", err
+		}
+		return record.Country.IsoCode, nil
 	}
-	return record.Country.IsoCode, nil
+	return "", fmt.Errorf("no ip or domain")
 }
