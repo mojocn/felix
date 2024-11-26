@@ -3,12 +3,7 @@ package util
 import (
 	"fmt"
 	"math/rand"
-	"time"
 )
-
-func init() {
-	rand.Seed(time.Now().Unix())
-}
 
 var (
 	stringMisc = []byte(".$#@&*_")

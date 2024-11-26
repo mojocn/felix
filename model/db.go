@@ -1,45 +1,24 @@
 package model
 
 import (
-	"log"
-	"math/rand"
-	"os"
-	"path"
-	"time"
-
-	"github.com/jinzhu/gorm"
-	_ "github.com/mattn/go-sqlite3"
-	"github.com/mitchellh/go-homedir"
+	"gorm.io/driver/sqlite" // Sqlite driver based on CGO
+	"gorm.io/gorm"
 )
 
 var db *gorm.DB
-var dbPath string
 
-func init() {
-	rand.Seed(time.Now().Unix())
-	dir, err := homedir.Dir()
+func initDb() {
+	var err error
+	db, err = gorm.Open(sqlite.Open("felix.sqlite3"), &gorm.Config{})
 	if err != nil {
-		log.Fatal("get home dir failed:", err)
+		panic("failed to connect database")
 	}
-	dbPath = path.Join(dir, ".felix/sqlite.db")
+	migrate()
 }
 
-func CreateSQLiteDb(verbose bool) {
-	//log.Println("SQLite3 in:", dbPath)
-	//sqlite, err := gorm.Open("sqlite3", dbPath)
-	//if err != nil {
-	//	logrus.WithError(err).Fatalf("master fail to open its sqlite db in %s. please install master first.", dbPath)
-	//	return
-	//}
-	//
-	//db = sqlite
-	////TODO::optimize
-	////db.DropTable("term_logs")
-	//db.AutoMigrate(Machine{}, Task{}, User{}, Ginbro{}, SshLog{}, WslogHook{}, WslogMsg{})
-	//db.LogMode(verbose)
-}
-
-func FlushSqliteDb() error {
-	db.Close()
-	return os.RemoveAll(dbPath)
+func DB() *gorm.DB {
+	if db == nil {
+		initDb()
+	}
+	return db
 }

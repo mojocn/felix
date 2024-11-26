@@ -2,20 +2,19 @@ package model
 
 import (
 	"errors"
-
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
-//PaginationQ gin handler query binding struct
+// PaginationQ gin handler query binding struct
 type PaginationQ struct {
 	Ok    bool        `json:"ok"`
-	Size  uint        `form:"size" json:"size"`
-	Page  uint        `form:"page" json:"page"`
+	Size  int         `form:"size" json:"size"`
+	Page  int         `form:"page" json:"page"`
 	Data  interface{} `json:"data" comment:"muster be a pointer of slice gorm.Model"` // save pagination list
-	Total uint        `json:"total"`
+	Total int64       `json:"total"`
 }
 
-//SearchAll optimized pagination method for gorm
+// SearchAll optimized pagination method for gorm
 func (p *PaginationQ) SearchAll(queryTx *gorm.DB) (data *PaginationQ, err error) {
 	//99999 magic number for get all list without pagination
 	if p.Size == 9999 || p.Size == 99999 {
@@ -40,7 +39,7 @@ func (p *PaginationQ) SearchAll(queryTx *gorm.DB) (data *PaginationQ, err error)
 	return p, err
 }
 
-func crudAll(p *PaginationQ, queryTx *gorm.DB, list interface{}) (uint, error) {
+func crudAll(p *PaginationQ, queryTx *gorm.DB, list interface{}) (int64, error) {
 	if p.Size < 1 {
 		p.Size = 10
 	}
@@ -48,7 +47,7 @@ func crudAll(p *PaginationQ, queryTx *gorm.DB, list interface{}) (uint, error) {
 		p.Page = 1
 	}
 
-	var total uint
+	var total int64
 	err := queryTx.Count(&total).Error
 	if err != nil {
 		return 0, err
@@ -62,7 +61,7 @@ func crudAll(p *PaginationQ, queryTx *gorm.DB, list interface{}) (uint, error) {
 }
 
 func crudOne(m interface{}) (err error) {
-	if db.First(m).RecordNotFound() {
+	if err := db.First(m).Error; errors.Is(err, gorm.ErrRecordNotFound) {
 		return errors.New("resource is not found")
 	}
 	return nil
