@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/mojocn/felix/model"
 	"io"
 	"log"
 	"log/slog"
@@ -16,6 +17,7 @@ type App struct {
 	AddrSocks5 string
 	geo        *GeoIP
 	Timeout    time.Duration
+	proxy      *model.Proxy
 }
 
 func NewApp(addr, geoIpPath string) (*App, error) {
@@ -31,7 +33,28 @@ func NewApp(addr, geoIpPath string) (*App, error) {
 
 }
 
-func (ss *App) Run(ctx context.Context, cfg *ProxyCfg) {
+func (ss *App) proxySetting() {
+	var proxies []model.Proxy
+	err := model.DB().Find(&proxies).Error
+	if err != nil {
+		slog.Error("failed to get proxy setting", "err", err.Error())
+		return
+	}
+	if len(proxies) == 0 {
+		slog.Error("no proxy setting found")
+		return
+	}
+	ss.proxy = &proxies[0]
+	for _, proxy := range proxies {
+		if proxy.IsActive() {
+			ss.proxy = &proxy
+			break
+		}
+	}
+}
+
+func (ss *App) Run(ctx context.Context) {
+
 	listener, err := net.Listen("tcp", ss.AddrSocks5)
 	if err != nil {
 		listener, err = net.Listen("tcp4", "127.0.0.1:0")
@@ -57,7 +80,7 @@ func (ss *App) Run(ctx context.Context, cfg *ProxyCfg) {
 				log.Printf("Failed to accept connection: %v", err)
 				continue
 			}
-			go ss.handleConnection(ctx, conn, cfg)
+			go ss.handleConnection(ctx, conn)
 		}
 	}
 }
@@ -98,7 +121,7 @@ func (ss *App) socks5Request(conn net.Conn) (*Socks5Request, error) {
 	return parseSocks5Request(data, ss.geo)
 }
 
-func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *ProxyCfg) {
+func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn) {
 	defer conn.Close() // the outer for loop is not suitable for defer, so defer close here
 	ctx, cf := context.WithTimeout(outerCtx, ss.Timeout)
 	defer cf()
@@ -115,7 +138,7 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *Pr
 	}
 	req.Logger().Info("remote target")
 	if req.socks5Cmd == socks5CmdConnect { //tcp
-		relayTcpSvr, err := ss.dispatchRelayTcpServer(ctx, cfg, req)
+		relayTcpSvr, err := ss.dispatchRelayTcpServer(ctx, req)
 		if checkSocks5Request(conn, err) {
 			return
 		}
@@ -130,9 +153,9 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn, cfg *Pr
 			udpConn:  nil,
 		}
 		defer session.Close()
-		err = session.breakGfwSvr(cfg)
+		err = session.breakGfwSvr(ss.proxy)
 		if err == nil {
-			session.pipe(ctx, cfg.UUID)
+			session.pipe(ctx, [16]byte{})
 		}
 	} else if req.socks5Cmd == socks5CmdBind {
 		err = fmt.Errorf("unsupported command: BIND")
@@ -165,10 +188,11 @@ func checkSocks5Request(socks5conn net.Conn, err error) (hasError bool) {
 	return hasError
 }
 
-func (ss *App) dispatchRelayTcpServer(ctx context.Context, cfg *ProxyCfg, req *Socks5Request) (io.ReadWriteCloser, error) {
+func (ss *App) dispatchRelayTcpServer(ctx context.Context, req *Socks5Request) (io.ReadWriteCloser, error) {
 	if ss.shouldGoDirect(req) {
 		return NewRelayTcpDirect(req)
 	}
+	cfg := ss.proxy
 	return NewRelayTcpSocks5e(ctx, cfg, req)
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/mojocn/felix/model"
 	"io"
 	"log"
 	"net"
@@ -18,7 +19,7 @@ type SessionUdp struct {
 	udpConn  *net.UDPConn
 }
 
-func (st *SessionUdp) breakGfwSvr(cfg *ProxyCfg) error {
+func (st *SessionUdp) breakGfwSvr(cfg *model.Proxy) error {
 	udpAddr := &net.UDPAddr{IP: net.IPv4zero, Port: 0}
 	udpConn, err := net.ListenUDP("udp4", udpAddr)
 	if err != nil {
@@ -33,8 +34,8 @@ func (st *SessionUdp) breakGfwSvr(cfg *ProxyCfg) error {
 		byte(boundAddr.Port >> 8), byte(boundAddr.Port & 0xFF),
 	}
 
-	wsAddr := cfg.WsUrl
-	ws, _, err := websocket.DefaultDialer.Dial(wsAddr, cfg.WsHeader)
+	wsAddr := "cfg.WsUrl" //todo:::
+	ws, _, err := websocket.DefaultDialer.Dial(wsAddr, nil)
 	if err != nil {
 		return fmt.Errorf("failed to connect to remote proxy server: %s ,error:%v", wsAddr, err)
 	}

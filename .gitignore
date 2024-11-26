@@ -12,3 +12,4 @@ _release
 .vscode
 _nes
 dist/
+*sqlite3

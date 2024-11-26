@@ -93,6 +93,19 @@ func (s Socks5Request) cmd() string {
 	}
 	return cmd
 }
+
+func (s Socks5Request) Network() string {
+	cmd := "unknown"
+	if s.socks5Cmd == socks5CmdConnect {
+		cmd = "tcp"
+	} else if s.socks5Cmd == socks5CmdUdpAssoc {
+		cmd = "udp"
+	} else if s.socks5Cmd == socks5CmdBind {
+		cmd = "bind"
+	}
+	return cmd
+}
+
 func (s Socks5Request) aType() string {
 	return fmt.Sprintf("%v", s.socks5Atyp)
 }

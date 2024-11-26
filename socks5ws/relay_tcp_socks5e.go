@@ -3,6 +3,7 @@ package socks5ws
 import (
 	"context"
 	"github.com/gorilla/websocket"
+	"github.com/mojocn/felix/model"
 	"log/slog"
 	"time"
 )
@@ -10,12 +11,12 @@ import (
 var _ RelayTcp = (*RelayTcpSocks5e)(nil)
 
 type RelayTcpSocks5e struct {
-	cfg  *ProxyCfg
+	cfg  *model.Proxy
 	req  *Socks5Request
 	conn *websocket.Conn
 }
 
-func NewRelayTcpSocks5e(ctx context.Context, cfg *ProxyCfg, req *Socks5Request) (*RelayTcpSocks5e, error) {
+func NewRelayTcpSocks5e(ctx context.Context, cfg *model.Proxy, req *Socks5Request) (*RelayTcpSocks5e, error) {
 	ws, err := webSocketConn(ctx, cfg, req)
 	if err != nil {
 		return nil, err
