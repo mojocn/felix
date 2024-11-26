@@ -27,10 +27,10 @@ func webSocketConn(ctx context.Context, proxy *model.Proxy, req *Socks5Request) 
 		}
 	}
 	headers.Set("x-req-id", req.id)
-	headers.Set("x-felix-network", "tcp")
-	headers.Set("x-felix-addr", req.host())
-	headers.Set("x-felix-port", req.port())
-	headers.Set("x-felix-protocol", proxy.Version)
+	headers.Set("x-dst-network", "tcp")
+	headers.Set("x-dst-addr", req.host())
+	headers.Set("x-dst-port", req.port())
+	headers.Set("x-dst-version", "socks5") // socks5proxy.Version
 	url := proxy.RelayURL()
 	slog.Debug("connecting to remote proxy server", "url", url)
 	ws, resp, err := websocket.DefaultDialer.DialContext(ctx, url, headers)

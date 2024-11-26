@@ -180,9 +180,9 @@ func checkSocks5Request(socks5conn net.Conn, err error) (hasError bool) {
 	hasError = err != nil
 	if hasError {
 		slog.Error("failed reason:", "err", err.Error())
-		_, err = socks5conn.Write(socks5ReplyBytesFailed)
+		_, err = socks5conn.Write(socks5ReplyBytesFail)
 	} else {
-		_, err = socks5conn.Write(socks5ReplyBytesSuccess)
+		_, err = socks5conn.Write(socks5ReplyBytesOkay)
 	}
 	if err != nil {
 		slog.Error("socks5 request rely failed to write", "err", err.Error())

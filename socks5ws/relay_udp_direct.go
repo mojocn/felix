@@ -29,7 +29,7 @@ func (st *SessionUdp) breakGfwSvr(cfg *model.Proxy) error {
 
 	boundAddr := udpConn.LocalAddr().(*net.UDPAddr)
 	response := []byte{
-		socks5Version, socks5ReplySuccess, socks5ReplyReserved, socks5AtypeIPv4,
+		socks5Version, socks5ReplyOkay, socks5ReplyReserved, socks5AtypeIPv4,
 		boundAddr.IP[0], boundAddr.IP[1], boundAddr.IP[2], boundAddr.IP[3],
 		byte(boundAddr.Port >> 8), byte(boundAddr.Port & 0xFF),
 	}
@@ -139,11 +139,12 @@ func (st *SessionUdp) handleUdp53Packet(conn *net.UDPConn, clientAddr *net.UDPAd
 	}
 	st.req.dstPort = udpPacket[dstPortIndex : dstPortIndex+2]
 
-	header, err := st.req.vlessHeaderUdp(uid)
-	if err != nil {
-		log.Println("failed to generate vless header")
-		return
-	}
+	//header, err := st.req.vlessHeaderUdp(uid)
+	//if err != nil {
+	//	log.Println("failed to generate vless header")
+	//	return
+	//}
+	var header []byte
 	payload := udpPacket[dstPortIndex+2:]
 	payloadN := len(payload)
 	//payloadN to 2 bytes
@@ -151,7 +152,7 @@ func (st *SessionUdp) handleUdp53Packet(conn *net.UDPConn, clientAddr *net.UDPAd
 
 	data := append(header, payload...)
 
-	err = st.ws.WriteMessage(websocket.BinaryMessage, data)
+	err := st.ws.WriteMessage(websocket.BinaryMessage, data)
 	if err != nil {
 		log.Printf("failed to send UDP udpPacket to remote server: %v", err)
 		return
