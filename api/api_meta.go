@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/mojocn/felix/model"
 	"net/http"
 )
@@ -24,7 +23,6 @@ func checkErr(w http.ResponseWriter, err error) (shouldReturn bool) {
 }
 
 func apiMeta(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "Welcome to the meta page!")
 	row := new(model.Meta)
 	err := model.DB().First(row).Error
 	if checkErr(w, err) {

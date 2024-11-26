@@ -7,10 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
-	"runtime"
-	"strings"
-	"sync"
 	"time"
 )
 
@@ -58,61 +54,53 @@ func NewCfIP() (*CfIP, error) {
 	}, nil
 }
 
-func (ci CfIP) ips() []string {
-	var allIps []string
-	for _, cidr := range ci.Ipv4Cidrs {
+func (ci CfIP) AllIps(fn func(ip, cidr string)) {
+	for _, cidr := range append(ci.Ipv4Cidrs, ci.Ipv6Cidrs...) {
 		ips, err := getIPsFromCIDR(cidr)
 		if err != nil {
-			fmt.Printf("Error parsing CIDR: %v\n", err)
+			fmt.Printf("Error parsing Cidr: %v\n", err)
 			continue
 		}
-		allIps = append(allIps, ips...)
+		for _, ip := range ips {
+			fn(ip, cidr)
+		}
 	}
-	//for _, cidr := range ci.Ipv6Cidrs {
-	//	ips, err := getIPsFromCIDR(cidr)
-	//	if err != nil {
-	//		fmt.Printf("Error parsing CIDR: %v\n", err)
-	//		continue
-	//	}
-	//	allIps = append(allIps, ips...)
-	//}
-	return allIps
 }
 
-func (ci CfIP) CheckReachableIps() {
-	maxWorkers := runtime.GOMAXPROCS(0) * 64
-	ips := ci.ips()
-	jobs := make(chan string, len(ips))
-	resultChan := make(chan string, len(ips))
-	var wg sync.WaitGroup
-	for i := 0; i < maxWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for ip := range jobs {
-				if isReachable(ip, 443) {
-					resultChan <- ip
-				}
-			}
-		}()
-	}
-	for _, ip := range ci.ips() {
-		jobs <- ip
-	}
-	close(jobs)
-	wg.Wait()
-	var reachable []string
-	for ip := range resultChan {
-		reachable = append(reachable, ip)
-	}
-	fd, err := os.Create("cf_reachable_ips.txt")
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer fd.Close()
-	fd.Write([]byte(strings.Join(reachable, "\n")))
-}
+//func (ci CfIP) CheckReachableIps() {
+//	maxWorkers := runtime.GOMAXPROCS(0) * 64
+//	ips := ci.ips()
+//	jobs := make(chan string, len(ips))
+//	resultChan := make(chan string, len(ips))
+//	var wg sync.WaitGroup
+//	for i := 0; i < maxWorkers; i++ {
+//		wg.Add(1)
+//		go func() {
+//			defer wg.Done()
+//			for ip := range jobs {
+//				if isReachable(ip, 443) {
+//					resultChan <- ip
+//				}
+//			}
+//		}()
+//	}
+//	for _, ip := range ci.ips() {
+//		jobs <- ip
+//	}
+//	close(jobs)
+//	wg.Wait()
+//	var reachable []string
+//	for ip := range resultChan {
+//		reachable = append(reachable, ip)
+//	}
+//	fd, err := os.Create("cf_reachable_ips.txt")
+//	if err != nil {
+//		log.Println(err)
+//		return
+//	}
+//	defer fd.Close()
+//	fd.Write([]byte(strings.Join(reachable, "\n")))
+//}
 
 func getIPsFromCIDR(cidr string) ([]string, error) {
 	ip, ipNet, err := net.ParseCIDR(cidr)

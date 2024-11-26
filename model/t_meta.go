@@ -1,8 +1,6 @@
 package model
 
-import "gorm.io/gorm"
-
 type Meta struct {
-	gorm.Model
+	ModelBase
 	Config Config `json:"config" gorm:"type:json;serializer:json"`
 }

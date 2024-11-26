@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func EnableInternetSetting(socks5Addr string) {
+func proxySettingOn(socks5Addr string) {
 	networkService := "Wi-Fi"   // Change this to your active network service name
 	proxyAddress := "127.0.0.1" // SOCKS5 proxy address
 	proxyPort := "1080"         // SOCKS5 proxy port
@@ -39,7 +39,7 @@ func EnableInternetSetting(socks5Addr string) {
 	fmt.Println("SOCKS5 proxy configured successfully!")
 }
 
-func getActiveNetworkService() (string, error) {
+func proxySettingOff() (string, error) {
 	cmd := exec.Command("networksetup", "-listallnetworkservices")
 	var out bytes.Buffer
 	cmd.Stdout = &out

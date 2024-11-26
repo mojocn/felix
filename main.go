@@ -28,7 +28,7 @@ func main() {
 	model.DB()
 	appCfg := model.Cfg()
 
-	app, err := socks5ws.NewApp(fmt.Sprintf("127.0.0.1:%d", appCfg.PortSocks5), "GeoLite2-Country.mmdb")
+	app, err := socks5ws.NewClientLocalSocks5Server(fmt.Sprintf("127.0.0.1:%d", appCfg.PortSocks5), "GeoLite2-Country.mmdb")
 	if err != nil {
 		log.Fatal(err)
 	}

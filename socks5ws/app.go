@@ -13,19 +13,19 @@ import (
 	"time"
 )
 
-type App struct {
+type ClientLocalSocks5Server struct {
 	AddrSocks5 string
 	geo        *GeoIP
 	Timeout    time.Duration
 	proxy      *model.Proxy
 }
 
-func NewApp(addr, geoIpPath string) (*App, error) {
+func NewClientLocalSocks5Server(addr, geoIpPath string) (*ClientLocalSocks5Server, error) {
 	geo, err := NewGeoIP(geoIpPath)
 	if err != nil {
 		return nil, err
 	}
-	return &App{
+	return &ClientLocalSocks5Server{
 		AddrSocks5: addr,
 		geo:        geo,
 		Timeout:    5 * time.Minute,
@@ -33,7 +33,7 @@ func NewApp(addr, geoIpPath string) (*App, error) {
 
 }
 
-func (ss *App) fetchActiveProxy() {
+func (ss *ClientLocalSocks5Server) fetchActiveProxy() {
 	var proxies []model.Proxy
 	err := model.DB().Find(&proxies).Error
 	if err != nil {
@@ -53,7 +53,7 @@ func (ss *App) fetchActiveProxy() {
 	}
 }
 
-func (ss *App) Run(ctx context.Context) {
+func (ss *ClientLocalSocks5Server) Run(ctx context.Context) {
 	ss.fetchActiveProxy()
 
 	listener, err := net.Listen("tcp", ss.AddrSocks5)
@@ -86,7 +86,7 @@ func (ss *App) Run(ctx context.Context) {
 	}
 }
 
-func (ss *App) socks5HandShake(conn net.Conn) error {
+func (ss *ClientLocalSocks5Server) socks5HandShake(conn net.Conn) error {
 	buf := make([]byte, 2)
 	if _, err := io.ReadFull(conn, buf); err != nil {
 		return fmt.Errorf("failed to read version and nmethods: %w", err)
@@ -109,7 +109,7 @@ func (ss *App) socks5HandShake(conn net.Conn) error {
 	return nil
 }
 
-func (ss *App) socks5Request(conn net.Conn) (*Socks5Request, error) {
+func (ss *ClientLocalSocks5Server) socks5Request(conn net.Conn) (*Socks5Request, error) {
 	buf := make([]byte, 8<<10)
 	n, err := conn.Read(buf)
 	if err != nil {
@@ -122,7 +122,7 @@ func (ss *App) socks5Request(conn net.Conn) (*Socks5Request, error) {
 	return parseSocks5Request(data, ss.geo)
 }
 
-func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn) {
+func (ss *ClientLocalSocks5Server) handleConnection(outerCtx context.Context, conn net.Conn) {
 	defer conn.Close() // the outer for loop is not suitable for defer, so defer close here
 	ctx, cf := context.WithTimeout(outerCtx, ss.Timeout)
 	defer cf()
@@ -158,6 +158,7 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn) {
 		if err == nil {
 			session.pipe(ctx, [16]byte{})
 		}
+		return
 	} else if req.socks5Cmd == socks5CmdBind {
 		err = fmt.Errorf("unsupported command: BIND")
 	} else {
@@ -167,7 +168,7 @@ func (ss *App) handleConnection(outerCtx context.Context, conn net.Conn) {
 	checkSocks5Request(conn, err)
 }
 
-func (ss *App) shouldGoDirect(req *Socks5Request) (goDirect bool) {
+func (ss *ClientLocalSocks5Server) shouldGoDirect(req *Socks5Request) (goDirect bool) {
 	if req.CountryCode == "CN" || req.CountryCode == "" {
 		//empty means geo ip failed or local address
 		return true
@@ -189,7 +190,7 @@ func checkSocks5Request(socks5conn net.Conn, err error) (hasError bool) {
 	return hasError
 }
 
-func (ss *App) dispatchRelayTcpServer(ctx context.Context, req *Socks5Request) (io.ReadWriteCloser, error) {
+func (ss *ClientLocalSocks5Server) dispatchRelayTcpServer(ctx context.Context, req *Socks5Request) (io.ReadWriteCloser, error) {
 	if ss.shouldGoDirect(req) {
 		return NewRelayTcpDirect(req)
 	}
@@ -197,7 +198,7 @@ func (ss *App) dispatchRelayTcpServer(ctx context.Context, req *Socks5Request) (
 	return NewRelayTcpSocks5e(ctx, cfg, req)
 }
 
-func (ss *App) pipeTcp(ctx context.Context, s5 net.Conn, relayRw io.ReadWriter) {
+func (ss *ClientLocalSocks5Server) pipeTcp(ctx context.Context, s5 net.Conn, relayRw io.ReadWriter) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go func() {

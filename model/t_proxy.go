@@ -2,12 +2,11 @@ package model
 
 import (
 	"fmt"
-	"gorm.io/gorm"
 	"strings"
 )
 
 type Proxy struct {
-	gorm.Model
+	ModelBase
 	Name string `json:"name" gorm:"varchar(255)"`
 
 	Protocol string `json:"protocol" gorm:"varchar(16)"` //ws,wss,http2,tls,http3
