@@ -2,11 +2,11 @@ package socks5ws
 
 import (
 	"context"
-	"encoding/json"
+	"crypto/tls"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/mojocn/felix/model"
-	"log"
+	"log/slog"
 	"net/http"
 )
 
@@ -15,42 +15,30 @@ const (
 )
 
 func webSocketConn(ctx context.Context, proxy *model.Proxy, req *Socks5Request) (*websocket.Conn, error) {
+	wsDialer := websocket.DefaultDialer
+
 	headers := http.Header{}
-	headers.Set("x-req-id", req.id)
 	headers.Set("Authorization", proxy.UserID)
 	headers.Set("User-Agent", browserAgent)
-	ws, resp, err := websocket.DefaultDialer.DialContext(ctx, proxy.RelayURL(), headers)
+	if proxy.Sni != "" {
+		headers.Set("Host", proxy.Sni)
+		wsDialer.TLSClientConfig = &tls.Config{
+			ServerName: proxy.Sni, // Set the SNI to the hostname of the server
+		}
+	}
+	headers.Set("x-req-id", req.id)
+	headers.Set("x-felix-network", "tcp")
+	headers.Set("x-felix-addr", req.host())
+	headers.Set("x-felix-port", req.port())
+	headers.Set("x-felix-protocol", proxy.Version)
+	url := proxy.RelayURL()
+	slog.Debug("connecting to remote proxy server", "url", url)
+	ws, resp, err := websocket.DefaultDialer.DialContext(ctx, url, headers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to remote proxy server: %s ,error:%v", proxy.RelayURL(), err)
 	}
 	if resp.StatusCode != http.StatusSwitchingProtocols {
 		return nil, fmt.Errorf("failed to connect to remote proxy server: %s ,error:%v", proxy.RelayURL(), err)
 	}
-	err = ws.WriteMessage(websocket.BinaryMessage, toDstConn(proxy, req))
-	if err != nil {
-		return nil, fmt.Errorf("failed to send dst conn info to remote proxy server %w", err)
-	}
 	return ws, nil
-}
-
-type DstConn struct {
-	Network  string `json:"network"`
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	Protocol string `json:"protocol"` //vless,ws_socks5,
-}
-
-func toDstConn(proxy *model.Proxy, req *Socks5Request) []byte {
-	info := &DstConn{
-		Network:  req.Network(),
-		Host:     req.host(),
-		Port:     req.port(),
-		Protocol: proxy.Protocol,
-	}
-	data, err := json.Marshal(info)
-	if err != nil {
-		log.Println("failed to marshal dst conn info", err)
-		return nil
-	}
-	return data
 }

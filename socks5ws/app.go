@@ -33,7 +33,7 @@ func NewApp(addr, geoIpPath string) (*App, error) {
 
 }
 
-func (ss *App) proxySetting() {
+func (ss *App) fetchActiveProxy() {
 	var proxies []model.Proxy
 	err := model.DB().Find(&proxies).Error
 	if err != nil {
@@ -54,6 +54,7 @@ func (ss *App) proxySetting() {
 }
 
 func (ss *App) Run(ctx context.Context) {
+	ss.fetchActiveProxy()
 
 	listener, err := net.Listen("tcp", ss.AddrSocks5)
 	if err != nil {
@@ -67,8 +68,8 @@ func (ss *App) Run(ctx context.Context) {
 
 	defer listener.Close()
 	log.Println("SOCKS5 server listening on: " + ss.AddrSocks5)
-	proxySettingOn(ss.AddrSocks5)
-	defer proxySettingOff()
+	//proxySettingOn(ss.AddrSocks5)
+	//defer proxySettingOff()
 	for {
 		select {
 		case <-ctx.Done():
