@@ -7,7 +7,9 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -78,44 +80,48 @@ func (ci CfIP) ips() []string {
 }
 
 func (ci CfIP) CheckReachableIps() {
-	maxWorkers := runtime.GOMAXPROCS(0)
-
-	jobs := make(chan string)
-	wg := sync.WaitGroup{}
+	maxWorkers := runtime.GOMAXPROCS(0) * 64
+	ips := ci.ips()
+	jobs := make(chan string, len(ips))
+	resultChan := make(chan string, len(ips))
+	var wg sync.WaitGroup
 	for i := 0; i < maxWorkers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for ip := range jobs {
-				if checkPort(ip, 443) {
-					ci.ReachableIPs <- ip
+				if isReachable(ip, 443) {
+					resultChan <- ip
 				}
 			}
 		}()
 	}
-	go func() {
-		for _, ip := range ci.ips() {
-			jobs <- ip
-		}
-		close(jobs)
-	}()
-
-	go func() {
-		for ii := range ci.ReachableIPs {
-			log.Println(ii)
-		}
-	}()
+	for _, ip := range ci.ips() {
+		jobs <- ip
+	}
+	close(jobs)
 	wg.Wait()
+	var reachable []string
+	for ip := range resultChan {
+		reachable = append(reachable, ip)
+	}
+	fd, err := os.Create("cf_reachable_ips.txt")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer fd.Close()
+	fd.Write([]byte(strings.Join(reachable, "\n")))
 }
 
 func getIPsFromCIDR(cidr string) ([]string, error) {
-	ip, ipnet, err := net.ParseCIDR(cidr)
+	ip, ipNet, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return nil, err
 	}
 
 	var ips []string
-	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
+	for ip := ip.Mask(ipNet.Mask); ipNet.Contains(ip); inc(ip) {
 		ips = append(ips, ip.String())
 	}
 	// Remove network address and broadcast address
@@ -131,10 +137,11 @@ func inc(ip net.IP) {
 	}
 }
 
-func checkPort(ip string, port int) bool {
-	timeout := time.Millisecond * 40
+func isReachable(ip string, port int) bool {
+	timeout := time.Millisecond * 70
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), timeout)
 	if err != nil {
+		log.Printf("Error connecting to %s:%d: %v\n", ip, port, err)
 		return false
 	}
 	conn.Close()

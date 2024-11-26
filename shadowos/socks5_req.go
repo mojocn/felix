@@ -106,7 +106,7 @@ func (s Socks5Request) Logger() *slog.Logger {
 	return slog.With("reqId", s.id, "cmd", s.cmd(), "atyp", s.aType(), "host", s.host(), "port", s.port(), "country", s.CountryCode)
 }
 func (s Socks5Request) String() string {
-	return fmt.Sprintf("socks5Cmd: %v, socks5Atyp: %v, dstAddr: %v, dstPort: %v, country: %s", s.cmd(), s.aType(), s.host(), s.port())
+	return fmt.Sprintf("socks5Cmd: %v, socks5Atyp: %v, dstAddr: %v, dstPort: %v, country: %s", s.cmd(), s.aType(), s.host(), s.port(), s.CountryCode)
 }
 
 func (s Socks5Request) addressBytes() []byte {
