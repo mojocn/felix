@@ -147,7 +147,7 @@ func (ss *ClientLocalSocks5Server) handleConnection(outerCtx context.Context, co
 			socks5Response(conn, net.IPv4zero, 0, socks5ReplyFail)
 			return
 		}
-
+		socks5Response(conn, net.IPv4zero, 0, socks5ReplyOkay)
 		defer relayTcpSvr.Close()
 		ss.pipeTcp(ctx, conn, relayTcpSvr)
 		return
@@ -181,23 +181,21 @@ func (ss *ClientLocalSocks5Server) shouldGoDirect(req *Socks5Request) (goDirect 
 }
 
 func (ss *ClientLocalSocks5Server) dispatchRelayTcpServer(ctx context.Context, req *Socks5Request) (io.ReadWriteCloser, error) {
-	//if ss.shouldGoDirect(req) {
-	//	req.Logger().Info("go direct")
-	//	return NewRelayTcpDirect(req)
-	//}
+	if ss.shouldGoDirect(req) {
+		req.Logger().Info("go direct")
+		return NewRelayTcpDirect(req)
+	}
 	return NewRelayTcpSocks5e(ctx, ss.proxy, req)
 }
 
 func (ss *ClientLocalSocks5Server) pipeTcp(ctx context.Context, s5 net.Conn, relayRw io.ReadWriter) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
-	dstConnExit := make(chan struct{})
 	go func() {
 		span := slog.With("fn", "ws -> s5")
 		defer func() {
 			span.Debug("wg1 done")
 			wg.Done()
-			dstConnExit <- struct{}{}
 		}()
 		for {
 			select {
@@ -228,9 +226,6 @@ func (ss *ClientLocalSocks5Server) pipeTcp(ctx context.Context, s5 net.Conn, rel
 		}()
 		for {
 			select {
-			case <-dstConnExit:
-				span.Info("dstConnExit exit")
-				return
 			case <-ctx.Done():
 				span.Debug("ctx.Done exit")
 				return
@@ -240,7 +235,7 @@ func (ss *ClientLocalSocks5Server) pipeTcp(ctx context.Context, s5 net.Conn, rel
 				n, err := s5.Read(buf)
 				if errors.Is(err, io.EOF) {
 					slog.Info("s5 read EOF")
-					continue
+					return
 				}
 				if err != nil {
 					et := fmt.Sprintf("%T", err)

@@ -27,6 +27,12 @@ func socks5Response(conn net.Conn, ipv4 net.IP, port int, socks5OkayOrFail byte)
 		ipv4 = net.IPv4zero
 		port = 0
 	}
+	if ipv4 == nil {
+		ipv4 = net.IPv4zero
+	}
+	if port < 0 || port > 65535 {
+		port = 0
+	}
 	response := []byte{socks5Version, socks5OkayOrFail, socks5ReplyReserved, socks5AtypeIPv4, ipv4[0], ipv4[1], ipv4[2], ipv4[3], byte(port >> 8), byte(port & 0xff)}
 	_, err := conn.Write(response)
 	if err != nil {
