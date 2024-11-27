@@ -89,12 +89,13 @@ func (ud *RelayUdpDirect) assembleThenPipeUdp(clientAddr *net.UDPAddr, dstAddr s
 }
 
 func (ud *RelayUdpDirect) StartPipe() {
-	buf := make([]byte, udpMTU)
+	buf := make([]byte, bufferSize)
 	for {
 		n, clientAddr, err := ud.relayUdp.ReadFromUDP(buf)
 		if errors.Is(err, io.EOF) {
 			return
 		}
+		//I will not verify the `clientAddr` because this SOCKS5 proxy is intended for local relay to bypass the GFW.
 		if err != nil {
 			slog.Error("Error reading UDP data", "err", err.Error())
 			continue
@@ -163,7 +164,7 @@ func forwardUDPData(udpPacket *udpPacket) ([]byte, error) {
 		return nil, err
 	}
 
-	buf := make([]byte, udpMTU)
+	buf := make([]byte, bufferSize)
 	n, _, err := conn.ReadFromUDP(buf)
 	if err != nil {
 		return nil, err
@@ -172,12 +173,12 @@ func forwardUDPData(udpPacket *udpPacket) ([]byte, error) {
 }
 
 type udpPacket struct {
-	RSV   [2]byte // 保留字段
-	Frag  byte    // 分片字段
-	AType byte    // dst 地址类型
-	Addr  []byte  // dst 地址
-	Port  []byte  // dst 端口
-	Data  []byte  // 数据
+	RSV   [2]byte // reserved
+	Frag  byte    // fragment
+	AType byte    // dst address type
+	Addr  []byte  // dst address
+	Port  []byte  // dst port
+	Data  []byte  // payload
 }
 
 func (p udpPacket) ResponseData(payload []byte) []byte {
@@ -191,7 +192,7 @@ func parseUDPData(data []byte) (*udpPacket, error) {
 	if len(data) < 4 {
 		return nil, fmt.Errorf("invalid UDP packet")
 	}
-	// 解析头部
+	// parse header
 	var packet = udpPacket{
 		RSV:   [2]byte{data[0], data[1]},
 		Frag:  data[2],
@@ -223,7 +224,6 @@ func parseUDPData(data []byte) (*udpPacket, error) {
 	default:
 		return nil, fmt.Errorf("unsupported address type: %d", packet.AType)
 	}
-	// 返回目标地址和数据
 	return &packet, nil
 }
 

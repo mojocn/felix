@@ -16,7 +16,7 @@ const (
 	socks5UdpFragNotSupported = 0x00
 	socks5UdpFragEnd          = 0x80
 
-	udpMTU = 65535
+	bufferSize = 64 << 10
 )
 
 var (
