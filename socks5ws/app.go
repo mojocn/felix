@@ -160,7 +160,7 @@ func (ss *ClientLocalSocks5Server) handleConnection(outerCtx context.Context, co
 		}
 
 		defer udpH.Close()
-		udpH.StartPipe()
+		udpH.PipeUdp()
 		return
 	} else if req.socks5Cmd == socks5CmdBind {
 		relayBind(conn, req)
@@ -181,21 +181,23 @@ func (ss *ClientLocalSocks5Server) shouldGoDirect(req *Socks5Request) (goDirect 
 }
 
 func (ss *ClientLocalSocks5Server) dispatchRelayTcpServer(ctx context.Context, req *Socks5Request) (io.ReadWriteCloser, error) {
-	if ss.shouldGoDirect(req) {
-		return NewRelayTcpDirect(req)
-	}
-	cfg := ss.proxy
-	return NewRelayTcpSocks5e(ctx, cfg, req)
+	//if ss.shouldGoDirect(req) {
+	//	req.Logger().Info("go direct")
+	//	return NewRelayTcpDirect(req)
+	//}
+	return NewRelayTcpSocks5e(ctx, ss.proxy, req)
 }
 
 func (ss *ClientLocalSocks5Server) pipeTcp(ctx context.Context, s5 net.Conn, relayRw io.ReadWriter) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
+	dstConnExit := make(chan struct{})
 	go func() {
 		span := slog.With("fn", "ws -> s5")
 		defer func() {
-			span.Debug("wg done")
+			span.Debug("wg1 done")
 			wg.Done()
+			dstConnExit <- struct{}{}
 		}()
 		for {
 			select {
@@ -207,7 +209,7 @@ func (ss *ClientLocalSocks5Server) pipeTcp(ctx context.Context, s5 net.Conn, rel
 				buf := make([]byte, 8<<10)
 				n, err := relayRw.Read(buf)
 				if err != nil {
-					span.Debug("relay read", "err", err.Error())
+					span.Error("relay read", "err", err.Error())
 					return
 				}
 				_, err = s5.Write(buf[:n])
@@ -221,11 +223,14 @@ func (ss *ClientLocalSocks5Server) pipeTcp(ctx context.Context, s5 net.Conn, rel
 	go func() { // s5 -> ws
 		span := slog.With("fn", "s5 -> ws")
 		defer func() {
-			span.Debug("wg done")
+			span.Debug("wg2 done")
 			wg.Done()
 		}()
 		for {
 			select {
+			case <-dstConnExit:
+				span.Info("dstConnExit exit")
+				return
 			case <-ctx.Done():
 				span.Debug("ctx.Done exit")
 				return
@@ -234,7 +239,8 @@ func (ss *ClientLocalSocks5Server) pipeTcp(ctx context.Context, s5 net.Conn, rel
 				//s5.SetReadDeadline(time.Now().Add(20 * time.Millisecond))
 				n, err := s5.Read(buf)
 				if errors.Is(err, io.EOF) {
-					return
+					slog.Info("s5 read EOF")
+					continue
 				}
 				if err != nil {
 					et := fmt.Sprintf("%T", err)

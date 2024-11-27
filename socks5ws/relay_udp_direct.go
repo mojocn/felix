@@ -88,7 +88,7 @@ func (ud *RelayUdpDirect) assembleThenPipeUdp(clientAddr *net.UDPAddr, dstAddr s
 	ud.segmentPipe(comboPacket, clientAddr)
 }
 
-func (ud *RelayUdpDirect) StartPipe() {
+func (ud *RelayUdpDirect) PipeUdp() {
 	buf := make([]byte, bufferSize)
 	for {
 		n, clientAddr, err := ud.relayUdp.ReadFromUDP(buf)
