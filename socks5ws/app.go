@@ -147,17 +147,12 @@ func (ss *ClientLocalSocks5Server) handleConnection(outerCtx context.Context, co
 		ss.pipeTcp(ctx, conn, relayTcpSvr)
 		return
 	} else if req.socks5Cmd == socks5CmdUdpAssoc {
-		session := SessionUdp{
-			req:      req,
-			s5:       conn,
-			wsExitCh: make(chan struct{}, 1),
-			udpConn:  nil,
+		udpH, err := NewRelayUdpDirect(conn)
+		if checkSocks5Request(conn, err) {
+			return
 		}
-		defer session.Close()
-		err = session.breakGfwSvr(ss.proxy)
-		if err == nil {
-			session.pipe(ctx, [16]byte{})
-		}
+		defer udpH.Close()
+		udpH.StartPipe()
 		return
 	} else if req.socks5Cmd == socks5CmdBind {
 		err = fmt.Errorf("unsupported command: BIND")
