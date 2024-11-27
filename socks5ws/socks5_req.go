@@ -59,15 +59,14 @@ func parseSocks5Request(data []byte, geo *GeoIP) (*Socks5Request, error) {
 	} else {
 		return nil, fmt.Errorf("unsupported address type: %d", data[3])
 	}
-	if info.host() == "0" {
-		//udp assoc
-		return info, nil
-	}
-	code, err := geo.country(info.host())
-	if err != nil {
-		info.Logger().Error("failed to get country code", "err", err.Error())
-	} else {
-		info.CountryCode = code
+	//only get country code for connect command
+	if info.socks5Cmd == socks5CmdConnect {
+		code, err := geo.country(info.host())
+		if err != nil {
+			info.Logger().Error("failed to get country code", "err", err.Error())
+		} else {
+			info.CountryCode = code
+		}
 	}
 	return info, nil
 }

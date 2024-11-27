@@ -1,6 +1,9 @@
 package socks5ws
 
-import "net"
+import (
+	"log/slog"
+	"net"
+)
 
 const (
 	socks5Version             = 0x05
@@ -19,7 +22,14 @@ const (
 	bufferSize = 64 << 10
 )
 
-var (
-	socks5ReplyBytesOkay = []byte{socks5Version, socks5ReplyOkay, socks5ReplyReserved, socks5AtypeIPv4, net.IPv4zero[0], net.IPv4zero[1], net.IPv4zero[2], net.IPv4zero[3], 0, 0}
-	socks5ReplyBytesFail = []byte{socks5Version, socks5ReplyFail, socks5ReplyReserved, socks5AtypeIPv4, net.IPv4zero[0], net.IPv4zero[1], net.IPv4zero[2], net.IPv4zero[3], 0, 0}
-)
+func socks5Response(conn net.Conn, ipv4 net.IP, port int, socks5OkayOrFail byte) {
+	if socks5OkayOrFail != socks5ReplyOkay {
+		ipv4 = net.IPv4zero
+		port = 0
+	}
+	response := []byte{socks5Version, socks5OkayOrFail, socks5ReplyReserved, socks5AtypeIPv4, ipv4[0], ipv4[1], ipv4[2], ipv4[3], byte(port >> 8), byte(port & 0xff)}
+	_, err := conn.Write(response)
+	if err != nil {
+		slog.Error("socks5 request rely failed to write", "err", err.Error())
+	}
+}

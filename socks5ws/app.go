@@ -129,38 +129,47 @@ func (ss *ClientLocalSocks5Server) handleConnection(outerCtx context.Context, co
 
 	err := ss.socks5HandShake(conn)
 	if err != nil {
-		log.Printf("failed to shake hand: %v", err)
+		slog.Error("failed to handshake", "err", err.Error())
+		socks5Response(conn, net.IPv4zero, 0, socks5ReplyFail)
 		return
 	}
 	req, err := ss.socks5Request(conn)
 	if err != nil {
-		log.Printf("failed to parse SOCKS5 request: %v", err)
+		slog.Error("failed to parse socks5 request", "err", err.Error())
+		socks5Response(conn, net.IPv4zero, 0, socks5ReplyFail)
 		return
 	}
 	req.Logger().Info("remote target")
 	if req.socks5Cmd == socks5CmdConnect { //tcp
 		relayTcpSvr, err := ss.dispatchRelayTcpServer(ctx, req)
-		if checkSocks5Request(conn, err) {
+		if err != nil {
+			slog.Error("failed to dispatch relay tcp server", "err", err.Error())
+			socks5Response(conn, net.IPv4zero, 0, socks5ReplyFail)
 			return
 		}
+
 		defer relayTcpSvr.Close()
 		ss.pipeTcp(ctx, conn, relayTcpSvr)
 		return
 	} else if req.socks5Cmd == socks5CmdUdpAssoc {
 		udpH, err := NewRelayUdpDirect(conn)
-		if checkSocks5Request(conn, err) {
+		if err != nil {
+			slog.Error("failed to create udp handler", "err", err.Error())
+			socks5Response(conn, net.IPv4zero, 0, socks5ReplyFail)
 			return
 		}
+
 		defer udpH.Close()
 		udpH.StartPipe()
 		return
 	} else if req.socks5Cmd == socks5CmdBind {
-		err = fmt.Errorf("unsupported command: BIND")
+		relayBind(conn, req)
+		return
 	} else {
 		err = fmt.Errorf("unknown command: %d", req.socks5Cmd)
+		slog.Error("unknown command", "err", err.Error())
+		socks5Response(conn, net.IPv4zero, 0, socks5ReplyFail)
 	}
-	//handle all error
-	checkSocks5Request(conn, err)
 }
 
 func (ss *ClientLocalSocks5Server) shouldGoDirect(req *Socks5Request) (goDirect bool) {
@@ -169,20 +178,6 @@ func (ss *ClientLocalSocks5Server) shouldGoDirect(req *Socks5Request) (goDirect 
 		return true
 	}
 	return false
-}
-
-func checkSocks5Request(socks5conn net.Conn, err error) (hasError bool) {
-	hasError = err != nil
-	if hasError {
-		slog.Error("failed reason:", "err", err.Error())
-		_, err = socks5conn.Write(socks5ReplyBytesFail)
-	} else {
-		_, err = socks5conn.Write(socks5ReplyBytesOkay)
-	}
-	if err != nil {
-		slog.Error("socks5 request rely failed to write", "err", err.Error())
-	}
-	return hasError
 }
 
 func (ss *ClientLocalSocks5Server) dispatchRelayTcpServer(ctx context.Context, req *Socks5Request) (io.ReadWriteCloser, error) {
