@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mojocn/felix/model"
+	"github.com/mojocn/felix/util"
 	"io"
 	"log"
 	"log/slog"
@@ -15,13 +16,13 @@ import (
 
 type ClientLocalSocks5Server struct {
 	AddrSocks5 string
-	geo        *GeoIP
+	geo        *util.GeoIP
 	Timeout    time.Duration
 	proxy      *model.Proxy
 }
 
 func NewClientLocalSocks5Server(addr, geoIpPath string) (*ClientLocalSocks5Server, error) {
-	geo, err := NewGeoIP(geoIpPath)
+	geo, err := util.NewGeoIP(geoIpPath)
 	if err != nil {
 		return nil, err
 	}
@@ -173,10 +174,12 @@ func (ss *ClientLocalSocks5Server) handleConnection(outerCtx context.Context, co
 }
 
 func (ss *ClientLocalSocks5Server) shouldGoDirect(req *Socks5Request) (goDirect bool) {
+
 	if req.CountryCode == "CN" || req.CountryCode == "" {
 		//empty means geo ip failed or local address
 		return true
 	}
+
 	return false
 }
 

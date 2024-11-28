@@ -1,4 +1,4 @@
-package socks5ws
+package util
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ func (g *GeoIP) Close() error {
 	return nil
 }
 
-func (g *GeoIP) country(host string) (isoCountryCode string, err error) {
+func (g *GeoIP) Country(host string) (isoCountryCode string, err error) {
 	if g == nil {
 		return "", fmt.Errorf("geo databse is nil")
 	}
@@ -45,7 +45,7 @@ func (g *GeoIP) country(host string) (isoCountryCode string, err error) {
 	}
 	record, err := g.db.Country(ip)
 	if err != nil {
-		return "", fmt.Errorf("failed to get country: %w", err)
+		return "", fmt.Errorf("failed to get Country: %w", err)
 	}
 	return record.Country.IsoCode, nil
 }

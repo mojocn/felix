@@ -3,6 +3,7 @@ package socks5ws
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/mojocn/felix/util"
 	"log/slog"
 	"net"
 )
@@ -16,7 +17,7 @@ type Socks5Request struct {
 	CountryCode string //iso country code
 }
 
-func parseSocks5Request(data []byte, geo *GeoIP) (*Socks5Request, error) {
+func parseSocks5Request(data []byte, geo *util.GeoIP) (*Socks5Request, error) {
 	id := uuid.NewString()
 	info := &Socks5Request{id: id}
 
@@ -61,7 +62,7 @@ func parseSocks5Request(data []byte, geo *GeoIP) (*Socks5Request, error) {
 	}
 	//only get country code for connect command
 	if info.socks5Cmd == socks5CmdConnect {
-		code, err := geo.country(info.host())
+		code, err := geo.Country(info.host())
 		if err != nil {
 			info.Logger().Error("failed to get country code", "err", err.Error())
 		} else {
@@ -82,6 +83,7 @@ func (s Socks5Request) host() string {
 	}
 	return addr
 }
+
 func (s Socks5Request) addr() string {
 	return fmt.Sprintf("%s:%s", s.host(), s.port())
 }

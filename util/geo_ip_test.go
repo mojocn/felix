@@ -1,4 +1,4 @@
-package socks5ws
+package util
 
 import (
 	"testing"

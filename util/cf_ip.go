@@ -19,6 +19,19 @@ type CfIP struct {
 	ReachableIPs chan string
 }
 
+var cfIpNode *CfIP
+
+func singletonCfIP() *CfIP {
+	if cfIpNode == nil {
+		var err error
+		cfIpNode, err = NewCfIP()
+		if err != nil {
+			log.Printf("Error getting cf ip: %v\n", err)
+		}
+	}
+	return cfIpNode
+}
+
 func NewCfIP() (*CfIP, error) {
 	resp, err := http.Get("https://api.cloudflare.com/client/v4/ips")
 	if err != nil {
@@ -52,6 +65,20 @@ func NewCfIP() (*CfIP, error) {
 		Ipv6Cidrs:    result.Result.Ipv4Cidrs,
 		ReachableIPs: make(chan string),
 	}, nil
+}
+
+func (ci CfIP) IsCf(ip net.IP) bool {
+	for _, cidr := range append(ci.Ipv4Cidrs, ci.Ipv6Cidrs...) {
+		_, ipNet, err := net.ParseCIDR(cidr)
+		if err != nil {
+			log.Printf("Error parsing Cidr: %v\n", err)
+			continue
+		}
+		if ipNet.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 func (ci CfIP) AllIps(fn func(ip, cidr string)) {
