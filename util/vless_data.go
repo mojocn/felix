@@ -10,13 +10,17 @@ import (
 )
 
 type SchemaVLESS struct {
-	UserUUID    uuid.UUID
+	userID      uuid.UUID
 	DstProtocol string //tcp or udp
 	dstHost     string
 	dstHostType string //ipv6 or ipv4,domain
 	dstPort     uint16
 	Version     byte
 	playload    []byte
+}
+
+func (h SchemaVLESS) UUID() string {
+	return h.userID.String()
 }
 
 func (h SchemaVLESS) DataUdp() []byte {
@@ -66,13 +70,13 @@ func (h SchemaVLESS) HostPort() string {
 	return net.JoinHostPort(h.dstHost, fmt.Sprintf("%d", h.dstPort))
 }
 func (h SchemaVLESS) Logger() *slog.Logger {
-	return slog.With("uuid", h.UserUUID.String(), "network", h.DstProtocol, "addr", h.HostPort())
+	return slog.With("userID", h.userID.String(), "network", h.DstProtocol, "addr", h.HostPort())
 }
 
 // VlessParse https://xtls.github.io/development/protocols/vless.html
 func VlessParse(buf []byte) (*SchemaVLESS, error) {
 	payload := &SchemaVLESS{
-		UserUUID:    uuid.Nil,
+		userID:      uuid.Nil,
 		DstProtocol: "",
 		dstHost:     "",
 		dstPort:     0,
@@ -85,7 +89,7 @@ func VlessParse(buf []byte) (*SchemaVLESS, error) {
 	}
 
 	payload.Version = buf[0]
-	payload.UserUUID = uuid.Must(uuid.FromBytes(buf[1:17]))
+	payload.userID = uuid.Must(uuid.FromBytes(buf[1:17]))
 	extraInfoProtoBufLen := buf[17]
 
 	command := buf[18+extraInfoProtoBufLen]

@@ -23,7 +23,7 @@ func startDstConnection(vd *util.SchemaVLESS, timeout time.Duration) (net.Conn, 
 	return conn, []byte{vd.Version, 0x00}, nil
 }
 
-func wsVless(w http.ResponseWriter, r *http.Request) {
+func (a *App) wsVless(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	earlyDataHeader := r.Header.Get("sec-websocket-protocol")
 	earlyData, err := base64.RawURLEncoding.DecodeString(earlyDataHeader)
@@ -31,7 +31,7 @@ func wsVless(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error decoding early data:", err)
 	}
 
-	ws, err := upgrader.Upgrade(w, r, nil)
+	ws, err := upGrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("Error upgrading to websocket:", err)
 		return
@@ -52,6 +52,9 @@ func wsVless(w http.ResponseWriter, r *http.Request) {
 	vData, err := util.VlessParse(earlyData)
 	if err != nil {
 		log.Println("Error parsing vless data:", err)
+		return
+	}
+	if a.IsUserNotAllowed(vData.UUID()) {
 		return
 	}
 	if vData.DstProtocol == "udp" {

@@ -11,18 +11,18 @@ import (
 	"sync"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+const buffSize = 8 << 10
+
+var upGrader = websocket.Upgrader{
+	ReadBufferSize:  buffSize,
+	WriteBufferSize: buffSize,
 	CheckOrigin: func(r *http.Request) bool {
 		// Allow all connections by default
 		return true
 	},
 }
 
-const buffSize = 8 << 10
-
-func wsS5(w http.ResponseWriter, r *http.Request) {
+func (a *App) wsS5(w http.ResponseWriter, r *http.Request) {
 	//authorization := r.Header.Get("authorization")
 	//reqID := r.Header.Get("x-request-id")
 	dstNetwork := r.Header.Get("x-dst-network")
@@ -36,7 +36,7 @@ func wsS5(w http.ResponseWriter, r *http.Request) {
 	}
 	//dstVersion := r.Header.Get("x-dst-vlessResponseHeader")
 	// Upgrade the HTTP connection to a WebSocket connection
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upGrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("Error upgrading to websocket:", err)
 		return
