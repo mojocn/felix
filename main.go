@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/mojocn/felix/api"
 	"github.com/mojocn/felix/model"
+	"github.com/mojocn/felix/rsver"
 	"github.com/mojocn/felix/socks5ws"
 	"log"
 	"log/slog"
@@ -24,6 +25,10 @@ var (
 func main() {
 	log.SetFlags(log.Lmicroseconds | log.Lshortfile)
 	slog.SetLogLoggerLevel(slog.LevelDebug)
+	if len(os.Args) > 1 && os.Args[1] == "s5cf" {
+		rsver.Run()
+		return
+	}
 
 	model.DB()
 	appCfg := model.Cfg()
