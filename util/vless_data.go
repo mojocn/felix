@@ -16,7 +16,7 @@ type SchemaVLESS struct {
 	dstHostType string //ipv6 or ipv4,domain
 	dstPort     uint16
 	Version     byte
-	playload    []byte
+	payload     []byte
 }
 
 func (h SchemaVLESS) UUID() string {
@@ -25,7 +25,7 @@ func (h SchemaVLESS) UUID() string {
 
 func (h SchemaVLESS) DataUdp() []byte {
 	allData := make([]byte, 0)
-	chunk := h.playload
+	chunk := h.payload
 	for index := 0; index < len(chunk); {
 		if index+2 > len(chunk) {
 			fmt.Println("Incomplete length buffer")
@@ -44,7 +44,7 @@ func (h SchemaVLESS) DataUdp() []byte {
 	return allData
 }
 func (h SchemaVLESS) DataTcp() []byte {
-	return h.playload
+	return h.payload
 }
 
 func (h SchemaVLESS) AddrUdp() *net.UDPAddr {
@@ -81,7 +81,7 @@ func VlessParse(buf []byte) (*SchemaVLESS, error) {
 		dstHost:     "",
 		dstPort:     0,
 		Version:     0,
-		playload:    nil,
+		payload:     nil,
 	}
 
 	if len(buf) < 24 {
@@ -115,7 +115,7 @@ func VlessParse(buf []byte) (*SchemaVLESS, error) {
 			return nil, fmt.Errorf("invalid IPv4 address length")
 		}
 		payload.dstHost = net.IP(buf[addressValueIndex : addressValueIndex+net.IPv4len]).String()
-		payload.playload = buf[addressValueIndex+net.IPv4len:]
+		payload.payload = buf[addressValueIndex+net.IPv4len:]
 		payload.dstHostType = "ipv4"
 	case 2: // domain
 		addressLength := buf[addressValueIndex]
@@ -124,7 +124,7 @@ func VlessParse(buf []byte) (*SchemaVLESS, error) {
 			return nil, fmt.Errorf("invalid domain address length")
 		}
 		payload.dstHost = string(buf[addressValueIndex : int(addressValueIndex)+int(addressLength)])
-		payload.playload = buf[int(addressValueIndex)+int(addressLength):]
+		payload.payload = buf[int(addressValueIndex)+int(addressLength):]
 		payload.dstHostType = "domain"
 
 	case 3: // IPv6
@@ -132,7 +132,7 @@ func VlessParse(buf []byte) (*SchemaVLESS, error) {
 			return nil, fmt.Errorf("invalid IPv6 address length")
 		}
 		payload.dstHost = net.IP(buf[addressValueIndex : addressValueIndex+net.IPv6len]).String()
-		payload.playload = buf[addressValueIndex+net.IPv6len:]
+		payload.payload = buf[addressValueIndex+net.IPv6len:]
 		payload.dstHostType = "ipv6"
 	default:
 		return nil, fmt.Errorf("addressType %d is not supported", addressType)
