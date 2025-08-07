@@ -4,22 +4,24 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/dhowden/tag"
-	"github.com/spf13/cobra"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/dhowden/tag"
+	"github.com/spf13/cobra"
 )
 
 var scanMusicCmd = &cobra.Command{
-	Use:   "scan-music",
+	Use:   "scanMusic",
 	Short: "scan music files",
 	Long:  ``,
 
 	Run: func(cmd *cobra.Command, args []string) {
 		//https://github.com/dhowden/tag music tag
-		baseDir := "/code/tech.mojotv.cn"
+		baseDir := "/data"
+		baseURL := "https://s3.mojotv.cn"
 		list := []music{}
 		filepath.Walk(baseDir+"/music", func(path string, info os.FileInfo, err error) error {
 			if !strings.HasSuffix(path, ".mp3") {
@@ -43,12 +45,11 @@ var scanMusicCmd = &cobra.Command{
 			one := music{
 				Name:   m.Title(),
 				Artist: m.Artist(),
-				Url:    strings.ReplaceAll(path, baseDir, ""),
+				Url:    baseURL + strings.ReplaceAll(path, baseDir, ""),
 				Cover:  b64UriImage(m),
 			}
 
 			list = append(list, one)
-
 			return nil
 		})
 		bs, err := json.Marshal(list)
@@ -76,11 +77,10 @@ type music struct {
 }
 
 func b64UriImage(tag tag.Metadata) string {
-	return "/assets/image/logo00.png"
+	return "/data/music-logo.jpg"
 	pic := tag.Picture()
 	if pic == nil {
 		return ""
 	}
-
 	return fmt.Sprintf("data:%s;%s", pic.MIMEType, base64.StdEncoding.EncodeToString(pic.Data))
 }

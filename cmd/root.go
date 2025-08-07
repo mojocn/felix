@@ -5,7 +5,6 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/mojocn/felix/model"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -46,7 +45,6 @@ func init() {
 }
 
 func initFunc() {
-	model.CreateSQLiteDb(verbose)
 	setupLog()
 }
 func setupLog() {
