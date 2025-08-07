@@ -77,7 +77,7 @@ type music struct {
 }
 
 func b64UriImage(tag tag.Metadata) string {
-	return "/data/music-logo.jpg"
+	return ""
 	pic := tag.Picture()
 	if pic == nil {
 		return ""
