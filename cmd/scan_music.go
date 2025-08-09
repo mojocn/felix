@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"log"
 	"os"
 	"path/filepath"
@@ -57,7 +60,7 @@ var scanMusicCmd = &cobra.Command{
 			log.Println(err)
 			return
 		}
-		err = os.WriteFile(baseDir+"/music.json", bs, 0644)
+		err = os.WriteFile(baseDir+"/music.json", bs, 0666)
 		if err != nil {
 			log.Println(err)
 			return
@@ -77,10 +80,33 @@ type music struct {
 }
 
 func b64UriImage(tag tag.Metadata) string {
-	return ""
 	pic := tag.Picture()
 	if pic == nil {
 		return ""
 	}
-	return fmt.Sprintf("data:%s;%s", pic.MIMEType, base64.StdEncoding.EncodeToString(pic.Data))
+
+	// Resize pic.Data to 100x100 using Go stdlib
+	img, _, err := image.Decode(bytes.NewReader(pic.Data))
+	if err != nil {
+		return ""
+	}
+	size := 100
+	// Create a new 100x100 RGBA image
+	resized := image.NewRGBA(image.Rect(0, 0, size, size))
+	// Scale the image to 100x100 using NearestNeighbor manually (since stdlib has no draw.NearestNeighbor)
+	// Simple nearest-neighbor resize implementation
+	bounds := img.Bounds()
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			srcX := bounds.Min.X + (x * bounds.Dx() / size)
+			srcY := bounds.Min.Y + (y * bounds.Dy() / size)
+			resized.Set(x, y, img.At(srcX, srcY))
+		}
+	}
+
+	// Encode the resized image back to bytes as JPEG, regardless of original format
+	var buf bytes.Buffer
+	jpeg.Encode(&buf, resized, &jpeg.Options{Quality: 25}) // Always encode as JPEG, lower quality
+
+	return fmt.Sprintf("data:image/jpeg;base64,%s", base64.StdEncoding.EncodeToString(buf.Bytes()))
 }
